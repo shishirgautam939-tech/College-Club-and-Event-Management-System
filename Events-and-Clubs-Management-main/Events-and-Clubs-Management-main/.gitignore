@@ -12,6 +12,8 @@ env/
 
 # Static files build
 backend/staticfiles/
+client/dist/
+node_modules/
 
 # Database
 db.sqlite3
