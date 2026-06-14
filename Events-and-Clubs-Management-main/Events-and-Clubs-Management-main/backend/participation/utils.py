@@ -106,7 +106,7 @@ def build_certificate_pdf(certificate):
     story = [
         Spacer(1, 0.4 * inch),
         Paragraph('Certificate of Participation', title_style),
-        Paragraph('Events &amp; Clubs Management Portal', subtitle_style),
+        Paragraph('College Club and Event Management System', subtitle_style),
         Spacer(1, 0.2 * inch),
         Paragraph('This is to certify that', body_style),
         Spacer(1, 0.15 * inch),

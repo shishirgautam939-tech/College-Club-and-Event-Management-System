@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../../api/auth";
 import { getDepartments } from "../../api/users";
+import Logo from "../../components/Logo";
 
 const BRANCH_MAP = {
   BCT: "BCT - Computer",
@@ -97,20 +98,17 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-5"
-      >
-        <h2 className="text-2xl font-bold text-center text-gray-800">
-          Create Account
+    <div className="min-h-screen bg-cream-50 flex flex-col items-center justify-center px-4 py-10">
+      <Link to="/" className="mb-8 no-underline">
+        <Logo compact markSize={40} />
+      </Link>
+
+      <form onSubmit={handleSubmit} className="card p-8 w-full max-w-md space-y-5">
+        <h2 className="text-xl font-semibold text-center text-stone-800">
+          Create account
         </h2>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-error">{error}</div>}
 
         <input
           type="text"
@@ -119,7 +117,7 @@ const Register = () => {
           value={form.full_name}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         />
         <input
           type="email"
@@ -128,7 +126,7 @@ const Register = () => {
           value={form.email}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         />
         <input
           type="password"
@@ -137,13 +135,13 @@ const Register = () => {
           value={form.password}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         />
         <select
           name="user_type"
           value={form.user_type}
           onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         >
           <option value="Student">Student</option>
           <option value="Faculty">Faculty</option>
@@ -160,12 +158,11 @@ const Register = () => {
               onChange={handleRollChange}
               required
               maxLength={12}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 uppercase"
+              className="input-field uppercase"
             />
-            <p className="mt-1 text-xs text-gray-500">Format: NCE0<span className="font-semibold">YY</span>BRANCH0<span className="font-semibold">RR</span> &mdash; YY=batch year, BRANCH=BCT/BCE/BEE/BEI, RR=roll no</p>
             {form.branch && (
-              <p className="mt-1 text-sm text-indigo-600 font-medium">
-                Detected branch: {BRANCH_MAP[form.branch] || form.branch}
+              <p className="mt-1 text-sm text-brand-700">
+                {BRANCH_MAP[form.branch] || form.branch}
               </p>
             )}
           </div>
@@ -197,22 +194,22 @@ const Register = () => {
           </>
         )}
 
-        <p className="text-xs text-stone-400">
-          Sign-up is for Students and Faculty only. Admin accounts are set up separately.
+        <p className="text-xs text-stone-400 text-center">
+          Admin accounts are set up separately.
         </p>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 cursor-pointer"
+          className="btn-primary w-full"
         >
-          {loading ? "Creating account..." : "Register"}
+          {loading ? "Creating..." : "Register"}
         </button>
 
-        <p className="text-sm text-center text-gray-500">
+        <p className="text-sm text-center text-stone-500">
           Already have an account?{" "}
-          <Link to="/login" className="text-indigo-600 hover:underline">
-            Login
+          <Link to="/login" className="text-brand-700 hover:underline">
+            Sign in
           </Link>
         </p>
       </form>

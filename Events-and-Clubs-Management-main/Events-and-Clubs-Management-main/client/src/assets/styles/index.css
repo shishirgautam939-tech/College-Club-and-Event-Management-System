@@ -249,3 +249,7 @@ body {
     font-size: 1.875rem;
   }
 }
+
+.no-underline {
+  text-decoration: none;
+}

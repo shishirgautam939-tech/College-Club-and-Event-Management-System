@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import { getClubs } from "../api/clubs";
+import Logo from "../components/Logo";
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
@@ -56,8 +57,8 @@ const AdminLayout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-6">
-              <Link to="/admin" className="text-xl font-semibold">
-                Campus Connect Admin
+              <Link to="/admin" className="no-underline shrink-0">
+                <Logo compact light markSize={32} />
               </Link>
               <Link to="/admin" className="text-brand-100 hover:text-white">
                 Dashboard

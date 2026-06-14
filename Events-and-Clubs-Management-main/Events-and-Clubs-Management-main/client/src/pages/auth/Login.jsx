@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import Logo from "../../components/Logo";
 
 const Login = () => {
   const [identifier, setIdentifier] = useState("");
@@ -40,14 +41,14 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-cream-50 flex flex-col items-center justify-center px-4 py-10">
+      <Link to="/" className="mb-8 no-underline">
+        <Logo compact markSize={40} />
+      </Link>
+
       <form onSubmit={handleSubmit} className="card p-8 w-full max-w-md space-y-5">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-2xl bg-brand-700 text-white flex items-center justify-center font-semibold mx-auto mb-4">
-            CC
-          </div>
-          <h2 className="text-2xl font-semibold text-stone-800">Welcome back</h2>
-          <p className="text-sm text-stone-500 mt-1">Sign in to your campus account</p>
+          <h2 className="text-xl font-semibold text-stone-800">Sign in</h2>
         </div>
 
         {justRegistered && (
@@ -77,16 +78,10 @@ const Login = () => {
         </button>
 
         <p className="text-sm text-center text-stone-500">
-          New here?{" "}
+          No account?{" "}
           <Link to="/register" className="text-brand-700 hover:underline">
-            Create an account
+            Register
           </Link>
-        </p>
-
-        <p className="text-xs text-center text-stone-400 border-t border-stone-100 pt-4">
-          Admin accounts are created by the system, not via sign-up.
-          <br />
-          Local dev default: <strong>admin@gmail.com</strong> / <strong>admin123</strong>
         </p>
       </form>
     </div>
