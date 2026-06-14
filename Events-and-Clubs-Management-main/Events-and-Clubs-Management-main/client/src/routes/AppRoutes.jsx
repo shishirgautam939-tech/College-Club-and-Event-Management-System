@@ -20,6 +20,8 @@ import EventAttendance from "../pages/admin/EventAttendance";
 import ProposeEvent from "../pages/student/ProposeEvent";
 import EventDiscovery from "../pages/student/EventDiscovery";
 import MyEvents from "../pages/student/MyEvents";
+import ScanAttendance from "../pages/student/ScanAttendance";
+import MyCertificates from "../pages/student/MyCertificates";
 import FacultyEvents from "../pages/faculty/FacultyEvents";
 
 const AppRoutes = () => {
@@ -62,6 +64,16 @@ const AppRoutes = () => {
         <Route path="/my-events" element={
           <ProtectedRoute allowedRoles={["Student"]}>
             <MyEvents />
+          </ProtectedRoute>
+        } />
+        <Route path="/scan-attendance" element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <ScanAttendance />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-certificates" element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <MyCertificates />
           </ProtectedRoute>
         } />
         <Route path="/events/propose" element={

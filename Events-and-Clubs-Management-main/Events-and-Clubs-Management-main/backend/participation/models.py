@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from accounts.models import User
 from events.models import Event
@@ -26,6 +28,7 @@ class Attendance(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='attended_events')
     present = models.BooleanField(default=False)
+    marked_via_qr = models.BooleanField(default=False)
     marked_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -34,3 +37,17 @@ class Attendance(models.Model):
     def __str__(self):
         status = "Present" if self.present else "Absent"
         return f"{self.user.full_name} at {self.event.title}: {status}"
+
+
+class Certificate(models.Model):
+    certificate_code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='certificates')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='certificates')
+    issued_at = models.DateTimeField(auto_now_add=True)
+    pdf_file = models.FileField(upload_to='certificates/', blank=True)
+
+    class Meta:
+        unique_together = ('event', 'user')
+
+    def __str__(self):
+        return f"Certificate for {self.user.full_name} - {self.event.title}"

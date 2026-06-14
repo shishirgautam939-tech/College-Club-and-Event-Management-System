@@ -30,6 +30,10 @@ class Event(models.Model):
     event_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    attendance_qr_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    attendance_qr_expires_at = models.DateTimeField(blank=True, null=True)
+    attendance_qr_active = models.BooleanField(default=False)
+
     def __str__(self):
         return self.title
 

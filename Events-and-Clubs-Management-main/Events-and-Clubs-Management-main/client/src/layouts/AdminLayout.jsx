@@ -51,23 +51,23 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-indigo-700 text-white shadow-md relative z-50">
+    <div className="min-h-screen bg-cream-100">
+      <nav className="bg-brand-800 text-white shadow-sm relative z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-6">
-              <Link to="/admin" className="text-xl font-bold">
-                ECM Admin
+              <Link to="/admin" className="text-xl font-semibold">
+                Campus Connect Admin
               </Link>
-              <Link to="/admin" className="text-indigo-200 hover:text-white">
+              <Link to="/admin" className="text-brand-100 hover:text-white">
                 Dashboard
               </Link>
               
-              <Link to="/admin/students" className="text-indigo-200 hover:text-white">
+              <Link to="/admin/students" className="text-brand-100 hover:text-white">
                 Students
               </Link>
 
-              <Link to="/admin/faculty" className="text-indigo-200 hover:text-white">
+              <Link to="/admin/faculty" className="text-brand-100 hover:text-white">
                 Faculty
               </Link>
 
@@ -78,7 +78,7 @@ const AdminLayout = () => {
                     setIsClubsMenuOpen((prev) => !prev);
                     setIsEventsMenuOpen(false);
                   }}
-                  className="text-indigo-200 hover:text-white flex items-center gap-1 focus:outline-none py-4 cursor-pointer"
+                  className="text-brand-100 hover:text-white flex items-center gap-1 focus:outline-none py-4 cursor-pointer"
                 >
                   Clubs
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,10 +87,10 @@ const AdminLayout = () => {
                 </button>
 
                 {isClubsMenuOpen && (
-                  <div className="absolute top-full left-0 w-56 bg-white rounded-md shadow-lg py-1 border border-indigo-100">
+                  <div className="absolute top-full left-0 w-56 bg-white rounded-xl shadow-lg py-1 border border-stone-200">
                     <Link
                       to="/admin/clubs"
-                      className="block px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 border-b border-gray-100"
+                      className="block px-4 py-2 text-sm font-medium text-brand-800 hover:bg-cream-100 border-b border-stone-100"
                     >
                       All Clubs
                     </Link>
@@ -98,7 +98,7 @@ const AdminLayout = () => {
                       <Link
                         key={club.id}
                         to={`/admin/clubs?name=${encodeURIComponent(club.club_name)}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+                        className="block px-4 py-2 text-sm text-stone-700 hover:bg-cream-100 hover:text-brand-800"
                       >
                         {club.club_name}
                       </Link>
@@ -114,7 +114,7 @@ const AdminLayout = () => {
                     setIsEventsMenuOpen((prev) => !prev);
                     setIsClubsMenuOpen(false);
                   }}
-                  className="text-indigo-200 hover:text-white flex items-center gap-1 focus:outline-none py-4 cursor-pointer"
+                  className="text-brand-100 hover:text-white flex items-center gap-1 focus:outline-none py-4 cursor-pointer"
                 >
                   Events
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ const AdminLayout = () => {
                 </button>
 
                 {isEventsMenuOpen && (
-                  <div className="absolute top-full left-0 w-48 bg-white rounded-md shadow-lg py-1 border border-indigo-100 z-50">
+                  <div className="absolute top-full left-0 w-48 bg-white rounded-xl shadow-lg py-1 border border-stone-200 z-50">
                     <Link
                       to="/admin/events?tab=pending"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
@@ -147,12 +147,12 @@ const AdminLayout = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-indigo-200">
+              <span className="text-sm text-brand-100">
                 {user?.name} (Admin)
               </span>
               <button
                 onClick={handleLogout}
-                className="px-3 py-1.5 text-sm bg-indigo-800 text-white rounded-md hover:bg-indigo-900 transition cursor-pointer"
+                className="px-3 py-1.5 text-sm bg-brand-900 text-white rounded-xl hover:bg-brand-700 transition cursor-pointer"
               >
                 Logout
               </button>

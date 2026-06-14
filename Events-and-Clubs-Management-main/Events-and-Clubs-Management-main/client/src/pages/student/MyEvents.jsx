@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { getMyRegistrations, unregisterFromEvent } from "../../api/participation";
+import { Link } from "react-router-dom";
+import {
+  getMyRegistrations,
+  unregisterFromEvent,
+  downloadMyEventCertificate,
+} from "../../api/participation";
+import { saveBlobAsFile } from "../../utils/downloadFile";
 import { formatDateTime } from "../../utils/formatDate";
 
 const MyEvents = () => {
@@ -8,6 +14,7 @@ const MyEvents = () => {
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [actionInProgress, setActionInProgress] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     fetchRegistrations();
@@ -41,175 +48,123 @@ const MyEvents = () => {
     }
   };
 
-  const upcoming = registrations.filter(
-    (r) => r.event_status === "Approved"
-  );
-  const completed = registrations.filter(
-    (r) => r.event_status === "Completed"
-  );
-
-  if (loading) return <p className="text-gray-500">Loading...</p>;
-
-  const attendanceBadge = (status) => {
-    if (status === "Present")
-      return (
-        <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-          Present
-        </span>
+  const handleDownloadCertificate = async (registration) => {
+    setDownloadingId(registration.event);
+    try {
+      const res = await downloadMyEventCertificate(registration.event);
+      saveBlobAsFile(
+        res.data,
+        `certificate_${registration.event_title.replace(/\s+/g, "_")}.pdf`,
       );
-    if (status === "Absent")
-      return (
-        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
-          Absent
-        </span>
-      );
-    return (
-      <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
-        Not Marked
-      </span>
-    );
+    } catch (err) {
+      setActionMsg({
+        type: "error",
+        text: err.response?.data?.detail || "Certificate not available yet.",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
-  const statusBadge = (status) => {
-    const colors = {
-      Approved: "bg-blue-100 text-blue-700",
-      Completed: "bg-green-100 text-green-700",
-      Rejected: "bg-red-100 text-red-700",
-    };
-    return (
-      <span
-        className={`px-2 py-0.5 rounded text-xs font-medium ${
-          colors[status] || "bg-gray-100 text-gray-600"
-        }`}
-      >
-        {status}
-      </span>
-    );
+  const upcoming = registrations.filter((r) => r.event_status === "Approved");
+  const completed = registrations.filter((r) => r.event_status === "Completed");
+
+  if (loading) return <p className="text-stone-500">Loading your events...</p>;
+
+  const attendanceBadge = (status) => {
+    if (status === "Present") return <span className="badge badge-success">Present</span>;
+    if (status === "Absent") return <span className="badge bg-red-50 text-red-700">Absent</span>;
+    return <span className="badge badge-muted">Not marked</span>;
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-800">My Events</h1>
+    <div className="page-shell">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">My Events</h1>
+          <p className="page-subtitle">Events you&apos;ve signed up for, your check-ins, and certificates.</p>
+        </div>
+        <Link to="/scan-attendance" className="btn-primary">
+          Scan QR to check in
+        </Link>
+      </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
-      )}
+      {error && <div className="alert alert-error">{error}</div>}
       {actionMsg.text && (
-        <div
-          className={`p-3 rounded text-sm ${
-            actionMsg.type === "success"
-              ? "bg-green-50 text-green-600"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
+        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
           {actionMsg.text}
         </div>
       )}
 
       {registrations.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">
-            You haven&apos;t registered for any events yet.
-          </p>
+        <div className="card p-10 text-center">
+          <p className="text-stone-500 mb-4">You haven&apos;t joined any events yet.</p>
+          <Link to="/dashboard" className="btn-primary inline-block">
+            Browse events
+          </Link>
         </div>
       ) : (
         <>
-          {/* Upcoming Events */}
           {upcoming.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Upcoming Events ({upcoming.length})
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="py-2 pr-4 font-medium">Event</th>
-                      <th className="py-2 pr-4 font-medium">Club</th>
-                      <th className="py-2 pr-4 font-medium">Date</th>
-                      <th className="py-2 pr-4 font-medium">Venue</th>
-                      <th className="py-2 pr-4 font-medium">Status</th>
-                      <th className="py-2 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {upcoming.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold text-stone-800">Upcoming ({upcoming.length})</h2>
+              <div className="grid gap-4">
+                {upcoming.map((r) => (
+                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
+                      <p className="text-sm text-brand-700">{r.club_name}</p>
+                      <p className="text-sm text-stone-500 mt-1">
+                        {formatDateTime(r.event_date)} · {r.venue || "Venue TBA"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link to="/scan-attendance" className="btn-secondary">
+                        Check in
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleUnregister(r.event)}
+                        disabled={actionInProgress === r.event}
+                        className="btn-secondary text-red-700 hover:bg-red-50"
                       >
-                        <td className="py-3 pr-4 font-medium text-gray-800">
-                          {r.event_title}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-600">{r.club_name}</td>
-                        <td className="py-3 pr-4 text-gray-600">
-                          {formatDateTime(r.event_date)}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-600">
-                          {r.venue || "—"}
-                        </td>
-                        <td className="py-3 pr-4">{statusBadge(r.event_status)}</td>
-                        <td className="py-3">
-                          <button
-                            onClick={() => handleUnregister(r.event)}
-                            disabled={actionInProgress === r.event}
-                            className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 transition disabled:opacity-50 cursor-pointer"
-                          >
-                            {actionInProgress === r.event
-                              ? "..."
-                              : "Unregister"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        {actionInProgress === r.event ? "..." : "Unregister"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Completed Events + Attendance */}
           {completed.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Past Events ({completed.length})
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="py-2 pr-4 font-medium">Event</th>
-                      <th className="py-2 pr-4 font-medium">Club</th>
-                      <th className="py-2 pr-4 font-medium">Date</th>
-                      <th className="py-2 pr-4 font-medium">Venue</th>
-                      <th className="py-2 pr-4 font-medium">Attendance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {completed.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold text-stone-800">Past events ({completed.length})</h2>
+              <div className="grid gap-4">
+                {completed.map((r) => (
+                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
+                      <p className="text-sm text-brand-700">{r.club_name}</p>
+                      <p className="text-sm text-stone-500 mt-1">
+                        {formatDateTime(r.event_date)} · {r.venue || "—"}
+                      </p>
+                      <div className="mt-2">{attendanceBadge(r.attendance_status)}</div>
+                    </div>
+                    {r.attendance_status === "Present" && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadCertificate(r)}
+                        disabled={downloadingId === r.event}
+                        className="btn-accent"
                       >
-                        <td className="py-3 pr-4 font-medium text-gray-800">
-                          {r.event_title}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-600">{r.club_name}</td>
-                        <td className="py-3 pr-4 text-gray-600">
-                          {formatDateTime(r.event_date)}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-600">
-                          {r.venue || "—"}
-                        </td>
-                        <td className="py-3 pr-4">
-                          {attendanceBadge(r.attendance_status)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        {downloadingId === r.event ? "Preparing..." : "Download certificate"}
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
+            </section>
           )}
         </>
       )}

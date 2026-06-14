@@ -222,8 +222,13 @@ class CompleteEventView(APIView):
         event.status = 'Completed'
         event.save()
 
+        from participation.utils import deactivate_event_qr, issue_certificates_for_event
+        deactivate_event_qr(event)
+        certificates = issue_certificates_for_event(event)
+
         return Response({
             'detail': 'Event marked as completed.',
             'event_id': event.id,
             'status': event.status,
+            'certificates_issued': len(certificates),
         })

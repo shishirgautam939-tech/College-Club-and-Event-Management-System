@@ -10,8 +10,6 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Show success message if redirected from registration
   const justRegistered = location.state?.registered;
 
   const handleSubmit = async (e) => {
@@ -25,45 +23,35 @@ const Login = () => {
       else navigate("/dashboard");
     } catch (err) {
       const data = err.response?.data;
-      if (data?.detail) {
-        setError(data.detail);
-      } else {
-        setError("Login failed. Check your credentials.");
-      }
+      setError(data?.detail || "Login failed. Check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md space-y-5"
-      >
-        <h2 className="text-2xl font-bold text-center text-gray-800">
-          Login
-        </h2>
+    <div className="min-h-screen bg-cream-50 flex items-center justify-center px-4">
+      <form onSubmit={handleSubmit} className="card p-8 w-full max-w-md space-y-5">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-2xl bg-brand-700 text-white flex items-center justify-center font-semibold mx-auto mb-4">
+            CC
+          </div>
+          <h2 className="text-2xl font-semibold text-stone-800">Welcome back</h2>
+          <p className="text-sm text-stone-500 mt-1">Sign in to your campus account</p>
+        </div>
 
         {justRegistered && (
-          <div className="bg-green-50 text-green-600 p-3 rounded-md text-sm">
-            Account created successfully! Please log in.
-          </div>
+          <div className="alert alert-success">Account created. You can sign in now.</div>
         )}
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-error">{error}</div>}
 
         <input
           type="text"
-          placeholder="Email, Roll Number, or Name"
+          placeholder="Email, roll number, or name"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         />
         <input
           type="password"
@@ -71,21 +59,17 @@ const Login = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="input-field"
         />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? "Logging in..." : "Login"}
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
-        <p className="text-sm text-center text-gray-500">
-          Don&apos;t have an account?{" "}
-          <Link to="/register" className="text-indigo-600 hover:underline">
-            Register
+        <p className="text-sm text-center text-stone-500">
+          New here?{" "}
+          <Link to="/register" className="text-brand-700 hover:underline">
+            Create an account
           </Link>
         </p>
       </form>

@@ -11,66 +11,52 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div clafssName="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-6">
-              <Link
-                to="/dashboard"
-                className="text-xl font-bold text-indigo-600"
-              >
-                ECM
+    <div className="min-h-screen bg-cream-50">
+      <nav className="bg-white/90 backdrop-blur border-b border-stone-200/80 sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center gap-5">
+              <Link to="/dashboard" className="text-lg font-semibold text-brand-800">
+                Campus Connect
               </Link>
-              <Link
-                to="/dashboard"
-                className="text-gray-600 hover:text-gray-900"
-              >
+              <Link to="/dashboard" className="nav-link hidden sm:inline">
                 Events
               </Link>
               {user?.role === "Student" && (
                 <>
-                  <Link
-                    to="/my-events"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
+                  <Link to="/my-events" className="nav-link hidden sm:inline">
                     My Events
                   </Link>
-                  <Link
-                    to="/events/propose"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
+                  <Link to="/scan-attendance" className="nav-link hidden sm:inline">
+                    Scan QR
+                  </Link>
+                  <Link to="/my-certificates" className="nav-link hidden sm:inline">
+                    Certificates
+                  </Link>
+                  <Link to="/events/propose" className="nav-link hidden md:inline">
                     Propose Event
                   </Link>
                 </>
               )}
               {(user?.role === "Faculty" || user?.role === "Admin") && (
-                <Link
-                  to="/faculty"
-                  className="text-gray-600 hover:text-gray-900"
-                >
+                <Link to="/faculty" className="nav-link hidden sm:inline">
                   Approvals
                 </Link>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500">
-                {user?.name}{" "}
-                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                  {user?.role}
-                </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-stone-500 hidden sm:inline">
+                Hi, {user?.name}
               </span>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition cursor-pointer"
-              >
+              <span className="badge badge-muted">{user?.role}</span>
+              <button type="button" onClick={handleLogout} className="btn-secondary py-1.5 px-3">
                 Logout
               </button>
             </div>
           </div>
         </div>
       </nav>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
     </div>
