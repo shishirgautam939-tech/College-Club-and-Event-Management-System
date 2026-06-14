@@ -1,0 +1,22 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Static files build
+backend/staticfiles/
+
+# Database
+db.sqlite3
+
+# OS files
+.DS_Store
+
+.vscode

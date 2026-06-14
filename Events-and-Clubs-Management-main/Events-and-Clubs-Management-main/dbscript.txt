@@ -1,0 +1,94 @@
+-- 1. Departments Table
+CREATE TABLE Departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- 2. Users Table
+CREATE TABLE Users (
+    user_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- For security
+    user_type VARCHAR(50) CHECK (user_type IN ('Student', 'Faculty', 'Staff', 'Admin')),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Roles Table
+CREATE TABLE Roles (
+    role_id SERIAL PRIMARY KEY,
+    role_name VARCHAR(100) NOT NULL UNIQUE -- e.g., 'Club Admin', 'Event Manager', 'Approver'
+);
+
+-- 4. User_Roles (Associative Table for RBAC)
+CREATE TABLE User_Roles (
+    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    role_id INT REFERENCES Roles(role_id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- 5. Faculty Table (Specialization/Subtype of Users)
+CREATE TABLE Faculty (
+    faculty_id INT PRIMARY KEY REFERENCES Users(user_id) ON DELETE CASCADE,
+    department_id INT REFERENCES Departments(department_id),
+    designation VARCHAR(100) -- e.g., 'Assistant Professor', 'HOD'
+);
+
+-- 6. Clubs Table
+CREATE TABLE Clubs (
+    club_id SERIAL PRIMARY KEY,
+    club_name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    faculty_coordinator_id INT REFERENCES Faculty(faculty_id),
+    is_council BOOLEAN DEFAULT FALSE -- To distinguish Student Council from Clubs
+);
+
+-- 7. Club_Members (Associative Table)
+CREATE TABLE Club_Members (
+    club_id INT REFERENCES Clubs(club_id) ON DELETE CASCADE,
+    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    position VARCHAR(100) DEFAULT 'Member', -- e.g., 'President', 'Secretary'
+    joined_at DATE DEFAULT CURRENT_DATE,
+    PRIMARY KEY (club_id, user_id)
+);
+
+-- 8. Events Table
+CREATE TABLE Events (
+    event_id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    organizer_type VARCHAR(50) CHECK (organizer_type IN ('Club', 'Council', 'Department')),
+    club_id INT REFERENCES Clubs(club_id), -- Nullable if it's a Department-only event
+    created_by INT REFERENCES Users(user_id),
+    status VARCHAR(50) DEFAULT 'Proposed' CHECK (status IN ('Proposed', 'Approved', 'Rejected', 'Open', 'Completed', 'Archived')),
+    participation_type VARCHAR(50) CHECK (participation_type IN ('Student-only', 'Faculty-only', 'Joint')),
+    max_participants INT DEFAULT 0, -- 0 for unlimited
+    event_date TIMESTAMP NOT NULL
+);
+
+-- 9. Event_Approvals (Weak Entity: 1-to-1 with Events)
+CREATE TABLE Event_Approvals (
+    event_id INT PRIMARY KEY REFERENCES Events(event_id) ON DELETE CASCADE,
+    approved_by INT REFERENCES Users(user_id),
+    approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    remarks TEXT,
+    decision VARCHAR(20) CHECK (decision IN ('Approved', 'Rejected'))
+);
+
+-- 10. Event_Registrations (Associative Table)
+CREATE TABLE Event_Registrations (
+    event_id INT REFERENCES Events(event_id) ON DELETE CASCADE,
+    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, user_id)
+);
+
+-- 11. Attendance Table
+CREATE TABLE Attendance (
+    event_id INT REFERENCES Events(event_id) ON DELETE CASCADE,
+    user_id INT REFERENCES Users(user_id) ON DELETE CASCADE,
+    present BOOLEAN DEFAULT FALSE,
+    marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, user_id)
+);

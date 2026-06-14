@@ -1,0 +1,41 @@
+client/src/
+├── api/                <-- The "Bridge" to Django
+│   ├── axios.js        (The main configuration)
+│   ├── auth.js         (Login, Register endpoints)
+│   ├── clubs.js        (Club-related endpoints)
+│   └── events.js       (Event-related endpoints)
+│
+├── assets/             <-- Static files
+│   ├── images/
+│   └── styles/         (Global CSS/Tailwind)
+│
+├── components/         <-- Reusable "LEGO" blocks
+│   ├── common/         (Button, Input, LoadingSpinner)
+│   ├── layout/         (Navbar, Sidebar, Footer)
+│   └── forms/          (LoginForm, EventRegistrationForm)
+│
+├── context/            <-- Global State (The "Brain")
+│   └── AuthContext.jsx (Stores User, Role, Token)
+│
+├── hooks/              <-- Custom Logic
+│   └── useAuth.js      (Shortcut to access user info)
+│
+├── layouts/            <-- Wrappers for pages
+│   ├── AdminLayout.jsx (Sidebar + Dashboard)
+│   └── MainLayout.jsx  (Navbar + Content)
+│
+├── pages/              <-- The actual "Screens"
+│   ├── auth/           (Login, Register)
+│   ├── admin/          (Dashboard, UserManagement)
+│   ├── student/        (EventList, MyClubs)
+│   └── faculty/        (Approvals, ClubCoordination)
+│
+├── routes/             <-- The "Traffic Control"
+│   ├── AppRoutes.jsx   (Main routing logic)
+│   └── ProtectedRoute.jsx (The security guard)
+│
+├── utils/              <-- Helper functions
+│   └── formatDate.js   (Convert ISO dates to readable text)
+│
+├── App.jsx             (Root component)
+└── main.jsx            (Entry point)

@@ -1,0 +1,39 @@
+backend/
+├── core/                     <-- Project configuration (The "Command Center")
+│   ├── settings.py           (Global settings: apps, DB, auth, CORS)
+│   ├── urls.py               (Root URL routing)
+│   ├── asgi.py               (ASGI entry point)
+│   └── wsgi.py               (WSGI entry point)
+│
+├── accounts/                 <-- Authentication & user profile logic
+│   ├── models.py             (Custom user/profile models)
+│   ├── serializers.py        (Request/response validation for auth APIs)
+│   ├── views.py              (Login, Register, Profile endpoints)
+│   ├── urls.py               (Auth route definitions)
+│   ├── admin.py              (Admin panel registration)
+│   ├── tests.py              (Accounts app tests)
+│   └── migrations/           (Database change history)
+│
+├── clubs/                    <-- Club domain logic
+│   ├── models.py             (Club data models)
+│   ├── views.py              (Club endpoints/business actions)
+│   ├── admin.py              (Admin panel registration)
+│   ├── tests.py              (Clubs app tests)
+│   └── migrations/           (Database change history)
+│
+├── events/                   <-- Event domain logic
+│   ├── models.py             (Event data models)
+│   ├── views.py              (Event endpoints/business actions)
+│   ├── admin.py              (Admin panel registration)
+│   ├── tests.py              (Events app tests)
+│   └── migrations/           (Database change history)
+│
+├── participation/            <-- Event participation/registration logic
+│   ├── models.py             (Participation data models)
+│   ├── views.py              (Participation endpoints/business actions)
+│   ├── admin.py              (Admin panel registration)
+│   ├── tests.py              (Participation app tests)
+│   └── migrations/           (Database change history)
+│
+├── manage.py                 (Django CLI entry point)
+└── env/                      (Local Python virtual environment)

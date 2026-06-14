@@ -1,0 +1,681 @@
+-- DROP SCHEMA public;
+
+CREATE SCHEMA public AUTHORIZATION pg_database_owner;
+
+COMMENT ON SCHEMA public IS 'standard public schema';
+
+-- DROP SEQUENCE public.accounts_role_id_seq;
+
+CREATE SEQUENCE public.accounts_role_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.accounts_role_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.accounts_role_id_seq TO postgres;
+
+-- DROP SEQUENCE public.accounts_user_groups_id_seq;
+
+CREATE SEQUENCE public.accounts_user_groups_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.accounts_user_groups_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.accounts_user_groups_id_seq TO postgres;
+
+-- DROP SEQUENCE public.accounts_user_id_seq;
+
+CREATE SEQUENCE public.accounts_user_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.accounts_user_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.accounts_user_id_seq TO postgres;
+
+-- DROP SEQUENCE public.accounts_user_user_permissions_id_seq;
+
+CREATE SEQUENCE public.accounts_user_user_permissions_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.accounts_user_user_permissions_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.accounts_user_user_permissions_id_seq TO postgres;
+
+-- DROP SEQUENCE public.auth_group_id_seq;
+
+CREATE SEQUENCE public.auth_group_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.auth_group_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.auth_group_id_seq TO postgres;
+
+-- DROP SEQUENCE public.auth_group_permissions_id_seq;
+
+CREATE SEQUENCE public.auth_group_permissions_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.auth_group_permissions_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.auth_group_permissions_id_seq TO postgres;
+
+-- DROP SEQUENCE public.auth_permission_id_seq;
+
+CREATE SEQUENCE public.auth_permission_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.auth_permission_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.auth_permission_id_seq TO postgres;
+
+-- DROP SEQUENCE public.clubs_club_id_seq;
+
+CREATE SEQUENCE public.clubs_club_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.clubs_club_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.clubs_club_id_seq TO postgres;
+
+-- DROP SEQUENCE public.clubs_clubmember_id_seq;
+
+CREATE SEQUENCE public.clubs_clubmember_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.clubs_clubmember_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.clubs_clubmember_id_seq TO postgres;
+
+-- DROP SEQUENCE public.clubs_department_id_seq;
+
+CREATE SEQUENCE public.clubs_department_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.clubs_department_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.clubs_department_id_seq TO postgres;
+
+-- DROP SEQUENCE public.django_admin_log_id_seq;
+
+CREATE SEQUENCE public.django_admin_log_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.django_admin_log_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.django_admin_log_id_seq TO postgres;
+
+-- DROP SEQUENCE public.django_content_type_id_seq;
+
+CREATE SEQUENCE public.django_content_type_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.django_content_type_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.django_content_type_id_seq TO postgres;
+
+-- DROP SEQUENCE public.django_migrations_id_seq;
+
+CREATE SEQUENCE public.django_migrations_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.django_migrations_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.django_migrations_id_seq TO postgres;
+
+-- DROP SEQUENCE public.events_event_id_seq;
+
+CREATE SEQUENCE public.events_event_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.events_event_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.events_event_id_seq TO postgres;
+
+-- DROP SEQUENCE public.participation_attendance_id_seq;
+
+CREATE SEQUENCE public.participation_attendance_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.participation_attendance_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.participation_attendance_id_seq TO postgres;
+
+-- DROP SEQUENCE public.participation_eventregistration_id_seq;
+
+CREATE SEQUENCE public.participation_eventregistration_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.participation_eventregistration_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.participation_eventregistration_id_seq TO postgres;
+-- public.accounts_role definition
+
+-- Drop table
+
+-- DROP TABLE public.accounts_role;
+
+CREATE TABLE public.accounts_role (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	role_name varchar(100) NOT NULL,
+	description text NOT NULL,
+	CONSTRAINT accounts_role_pkey PRIMARY KEY (id),
+	CONSTRAINT accounts_role_role_name_key UNIQUE (role_name)
+);
+CREATE INDEX accounts_role_role_name_240d566f_like ON public.accounts_role USING btree (role_name varchar_pattern_ops);
+
+-- Permissions
+
+ALTER TABLE public.accounts_role OWNER TO postgres;
+GRANT ALL ON TABLE public.accounts_role TO postgres;
+
+
+-- public.accounts_user definition
+
+-- Drop table
+
+-- DROP TABLE public.accounts_user;
+
+CREATE TABLE public.accounts_user (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	"password" varchar(128) NOT NULL,
+	last_login timestamptz NULL,
+	is_superuser bool NOT NULL,
+	email varchar(254) NOT NULL,
+	full_name varchar(255) NOT NULL,
+	user_type varchar(50) NOT NULL,
+	is_active bool NOT NULL,
+	is_staff bool NOT NULL,
+	created_at timestamptz NOT NULL,
+	CONSTRAINT accounts_user_email_key UNIQUE (email),
+	CONSTRAINT accounts_user_pkey PRIMARY KEY (id)
+);
+CREATE INDEX accounts_user_email_b2644a56_like ON public.accounts_user USING btree (email varchar_pattern_ops);
+
+-- Permissions
+
+ALTER TABLE public.accounts_user OWNER TO postgres;
+GRANT ALL ON TABLE public.accounts_user TO postgres;
+
+
+-- public.auth_group definition
+
+-- Drop table
+
+-- DROP TABLE public.auth_group;
+
+CREATE TABLE public.auth_group (
+	id int4 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	"name" varchar(150) NOT NULL,
+	CONSTRAINT auth_group_name_key UNIQUE (name),
+	CONSTRAINT auth_group_pkey PRIMARY KEY (id)
+);
+CREATE INDEX auth_group_name_a6ea08ec_like ON public.auth_group USING btree (name varchar_pattern_ops);
+
+-- Permissions
+
+ALTER TABLE public.auth_group OWNER TO postgres;
+GRANT ALL ON TABLE public.auth_group TO postgres;
+
+
+-- public.clubs_department definition
+
+-- Drop table
+
+-- DROP TABLE public.clubs_department;
+
+CREATE TABLE public.clubs_department (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	department_name varchar(255) NOT NULL,
+	CONSTRAINT clubs_department_department_name_key UNIQUE (department_name),
+	CONSTRAINT clubs_department_pkey PRIMARY KEY (id)
+);
+CREATE INDEX clubs_department_department_name_b9ee1058_like ON public.clubs_department USING btree (department_name varchar_pattern_ops);
+
+-- Permissions
+
+ALTER TABLE public.clubs_department OWNER TO postgres;
+GRANT ALL ON TABLE public.clubs_department TO postgres;
+
+
+-- public.django_content_type definition
+
+-- Drop table
+
+-- DROP TABLE public.django_content_type;
+
+CREATE TABLE public.django_content_type (
+	id int4 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	app_label varchar(100) NOT NULL,
+	model varchar(100) NOT NULL,
+	CONSTRAINT django_content_type_app_label_model_76bd3d3b_uniq UNIQUE (app_label, model),
+	CONSTRAINT django_content_type_pkey PRIMARY KEY (id)
+);
+
+-- Permissions
+
+ALTER TABLE public.django_content_type OWNER TO postgres;
+GRANT ALL ON TABLE public.django_content_type TO postgres;
+
+
+-- public.django_migrations definition
+
+-- Drop table
+
+-- DROP TABLE public.django_migrations;
+
+CREATE TABLE public.django_migrations (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	app varchar(255) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	applied timestamptz NOT NULL,
+	CONSTRAINT django_migrations_pkey PRIMARY KEY (id)
+);
+
+-- Permissions
+
+ALTER TABLE public.django_migrations OWNER TO postgres;
+GRANT ALL ON TABLE public.django_migrations TO postgres;
+
+
+-- public.django_session definition
+
+-- Drop table
+
+-- DROP TABLE public.django_session;
+
+CREATE TABLE public.django_session (
+	session_key varchar(40) NOT NULL,
+	session_data text NOT NULL,
+	expire_date timestamptz NOT NULL,
+	CONSTRAINT django_session_pkey PRIMARY KEY (session_key)
+);
+CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING btree (expire_date);
+CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session USING btree (session_key varchar_pattern_ops);
+
+-- Permissions
+
+ALTER TABLE public.django_session OWNER TO postgres;
+GRANT ALL ON TABLE public.django_session TO postgres;
+
+
+-- public.accounts_user_groups definition
+
+-- Drop table
+
+-- DROP TABLE public.accounts_user_groups;
+
+CREATE TABLE public.accounts_user_groups (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	user_id int8 NOT NULL,
+	group_id int4 NOT NULL,
+	CONSTRAINT accounts_user_groups_pkey PRIMARY KEY (id),
+	CONSTRAINT accounts_user_groups_user_id_group_id_59c0b32f_uniq UNIQUE (user_id, group_id),
+	CONSTRAINT accounts_user_groups_group_id_bd11a704_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT accounts_user_groups_user_id_52b62117_fk_accounts_user_id FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX accounts_user_groups_group_id_bd11a704 ON public.accounts_user_groups USING btree (group_id);
+CREATE INDEX accounts_user_groups_user_id_52b62117 ON public.accounts_user_groups USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.accounts_user_groups OWNER TO postgres;
+GRANT ALL ON TABLE public.accounts_user_groups TO postgres;
+
+
+-- public.auth_permission definition
+
+-- Drop table
+
+-- DROP TABLE public.auth_permission;
+
+CREATE TABLE public.auth_permission (
+	id int4 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	content_type_id int4 NOT NULL,
+	codename varchar(100) NOT NULL,
+	CONSTRAINT auth_permission_content_type_id_codename_01ab375a_uniq UNIQUE (content_type_id, codename),
+	CONSTRAINT auth_permission_pkey PRIMARY KEY (id),
+	CONSTRAINT auth_permission_content_type_id_2f476e4b_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX auth_permission_content_type_id_2f476e4b ON public.auth_permission USING btree (content_type_id);
+
+-- Permissions
+
+ALTER TABLE public.auth_permission OWNER TO postgres;
+GRANT ALL ON TABLE public.auth_permission TO postgres;
+
+
+-- public.clubs_club definition
+
+-- Drop table
+
+-- DROP TABLE public.clubs_club;
+
+CREATE TABLE public.clubs_club (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	club_name varchar(255) NOT NULL,
+	description text NOT NULL,
+	is_council bool NOT NULL,
+	created_at timestamptz NOT NULL,
+	faculty_coordinator_id int8 NULL,
+	CONSTRAINT clubs_club_club_name_key UNIQUE (club_name),
+	CONSTRAINT clubs_club_pkey PRIMARY KEY (id),
+	CONSTRAINT clubs_club_faculty_coordinator_id_e7c4df42_fk_accounts_user_id FOREIGN KEY (faculty_coordinator_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX clubs_club_club_name_8af57f2b_like ON public.clubs_club USING btree (club_name varchar_pattern_ops);
+CREATE INDEX clubs_club_faculty_coordinator_id_e7c4df42 ON public.clubs_club USING btree (faculty_coordinator_id);
+
+-- Permissions
+
+ALTER TABLE public.clubs_club OWNER TO postgres;
+GRANT ALL ON TABLE public.clubs_club TO postgres;
+
+
+-- public.clubs_clubmember definition
+
+-- Drop table
+
+-- DROP TABLE public.clubs_clubmember;
+
+CREATE TABLE public.clubs_clubmember (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	"position" varchar(100) NOT NULL,
+	joined_at date NOT NULL,
+	club_id int8 NOT NULL,
+	user_id int8 NOT NULL,
+	CONSTRAINT clubs_clubmember_club_id_user_id_c5fbc348_uniq UNIQUE (club_id, user_id),
+	CONSTRAINT clubs_clubmember_pkey PRIMARY KEY (id),
+	CONSTRAINT clubs_clubmember_club_id_9352c7e5_fk_clubs_club_id FOREIGN KEY (club_id) REFERENCES public.clubs_club(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT clubs_clubmember_user_id_aedc8b93_fk_accounts_user_id FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX clubs_clubmember_club_id_9352c7e5 ON public.clubs_clubmember USING btree (club_id);
+CREATE INDEX clubs_clubmember_user_id_aedc8b93 ON public.clubs_clubmember USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.clubs_clubmember OWNER TO postgres;
+GRANT ALL ON TABLE public.clubs_clubmember TO postgres;
+
+
+-- public.django_admin_log definition
+
+-- Drop table
+
+-- DROP TABLE public.django_admin_log;
+
+CREATE TABLE public.django_admin_log (
+	id int4 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	action_time timestamptz NOT NULL,
+	object_id text NULL,
+	object_repr varchar(200) NOT NULL,
+	action_flag int2 NOT NULL,
+	change_message text NOT NULL,
+	content_type_id int4 NULL,
+	user_id int8 NOT NULL,
+	CONSTRAINT django_admin_log_action_flag_check CHECK ((action_flag >= 0)),
+	CONSTRAINT django_admin_log_pkey PRIMARY KEY (id),
+	CONSTRAINT django_admin_log_content_type_id_c4bce8eb_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT django_admin_log_user_id_c564eba6_fk_accounts_user_id FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX django_admin_log_content_type_id_c4bce8eb ON public.django_admin_log USING btree (content_type_id);
+CREATE INDEX django_admin_log_user_id_c564eba6 ON public.django_admin_log USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.django_admin_log OWNER TO postgres;
+GRANT ALL ON TABLE public.django_admin_log TO postgres;
+
+
+-- public.events_event definition
+
+-- Drop table
+
+-- DROP TABLE public.events_event;
+
+CREATE TABLE public.events_event (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	title varchar(255) NOT NULL,
+	description text NOT NULL,
+	organizer_type varchar(50) NOT NULL,
+	status varchar(50) NOT NULL,
+	event_date timestamptz NOT NULL,
+	created_at timestamptz NOT NULL,
+	club_id int8 NULL,
+	created_by_id int8 NOT NULL,
+	CONSTRAINT events_event_pkey PRIMARY KEY (id),
+	CONSTRAINT events_event_club_id_bffc1900_fk_clubs_club_id FOREIGN KEY (club_id) REFERENCES public.clubs_club(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT events_event_created_by_id_2c28ea90_fk_accounts_user_id FOREIGN KEY (created_by_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX events_event_club_id_bffc1900 ON public.events_event USING btree (club_id);
+CREATE INDEX events_event_created_by_id_2c28ea90 ON public.events_event USING btree (created_by_id);
+
+-- Permissions
+
+ALTER TABLE public.events_event OWNER TO postgres;
+GRANT ALL ON TABLE public.events_event TO postgres;
+
+
+-- public.events_eventapproval definition
+
+-- Drop table
+
+-- DROP TABLE public.events_eventapproval;
+
+CREATE TABLE public.events_eventapproval (
+	event_id int8 NOT NULL,
+	approved_at timestamptz NOT NULL,
+	remarks text NOT NULL,
+	decision varchar(20) NOT NULL,
+	approved_by_id int8 NULL,
+	CONSTRAINT events_eventapproval_pkey PRIMARY KEY (event_id),
+	CONSTRAINT events_eventapproval_approved_by_id_37298526_fk_accounts_ FOREIGN KEY (approved_by_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT events_eventapproval_event_id_2c515313_fk_events_event_id FOREIGN KEY (event_id) REFERENCES public.events_event(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX events_eventapproval_approved_by_id_37298526 ON public.events_eventapproval USING btree (approved_by_id);
+
+-- Permissions
+
+ALTER TABLE public.events_eventapproval OWNER TO postgres;
+GRANT ALL ON TABLE public.events_eventapproval TO postgres;
+
+
+-- public.participation_attendance definition
+
+-- Drop table
+
+-- DROP TABLE public.participation_attendance;
+
+CREATE TABLE public.participation_attendance (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	present bool NOT NULL,
+	marked_at timestamptz NOT NULL,
+	event_id int8 NOT NULL,
+	user_id int8 NOT NULL,
+	CONSTRAINT participation_attendance_event_id_user_id_f698cf0b_uniq UNIQUE (event_id, user_id),
+	CONSTRAINT participation_attendance_pkey PRIMARY KEY (id),
+	CONSTRAINT participation_attendance_event_id_16b6b635_fk_events_event_id FOREIGN KEY (event_id) REFERENCES public.events_event(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT participation_attendance_user_id_eded25a2_fk_accounts_user_id FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX participation_attendance_event_id_16b6b635 ON public.participation_attendance USING btree (event_id);
+CREATE INDEX participation_attendance_user_id_eded25a2 ON public.participation_attendance USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.participation_attendance OWNER TO postgres;
+GRANT ALL ON TABLE public.participation_attendance TO postgres;
+
+
+-- public.participation_eventregistration definition
+
+-- Drop table
+
+-- DROP TABLE public.participation_eventregistration;
+
+CREATE TABLE public.participation_eventregistration (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	registered_at timestamptz NOT NULL,
+	event_id int8 NOT NULL,
+	user_id int8 NOT NULL,
+	CONSTRAINT participation_eventregistration_event_id_user_id_fe76e62c_uniq UNIQUE (event_id, user_id),
+	CONSTRAINT participation_eventregistration_pkey PRIMARY KEY (id),
+	CONSTRAINT participation_eventr_event_id_c346b388_fk_events_ev FOREIGN KEY (event_id) REFERENCES public.events_event(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT participation_eventr_user_id_c2a587a3_fk_accounts_ FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX participation_eventregistration_event_id_c346b388 ON public.participation_eventregistration USING btree (event_id);
+CREATE INDEX participation_eventregistration_user_id_c2a587a3 ON public.participation_eventregistration USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.participation_eventregistration OWNER TO postgres;
+GRANT ALL ON TABLE public.participation_eventregistration TO postgres;
+
+
+-- public.accounts_user_user_permissions definition
+
+-- Drop table
+
+-- DROP TABLE public.accounts_user_user_permissions;
+
+CREATE TABLE public.accounts_user_user_permissions (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	user_id int8 NOT NULL,
+	permission_id int4 NOT NULL,
+	CONSTRAINT accounts_user_user_permi_user_id_permission_id_2ab516c2_uniq UNIQUE (user_id, permission_id),
+	CONSTRAINT accounts_user_user_permissions_pkey PRIMARY KEY (id),
+	CONSTRAINT accounts_user_user_p_permission_id_113bb443_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT accounts_user_user_p_user_id_e4f0a161_fk_accounts_ FOREIGN KEY (user_id) REFERENCES public.accounts_user(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX accounts_user_user_permissions_permission_id_113bb443 ON public.accounts_user_user_permissions USING btree (permission_id);
+CREATE INDEX accounts_user_user_permissions_user_id_e4f0a161 ON public.accounts_user_user_permissions USING btree (user_id);
+
+-- Permissions
+
+ALTER TABLE public.accounts_user_user_permissions OWNER TO postgres;
+GRANT ALL ON TABLE public.accounts_user_user_permissions TO postgres;
+
+
+-- public.auth_group_permissions definition
+
+-- Drop table
+
+-- DROP TABLE public.auth_group_permissions;
+
+CREATE TABLE public.auth_group_permissions (
+	id int8 GENERATED BY DEFAULT AS IDENTITY( INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1 NO CYCLE) NOT NULL,
+	group_id int4 NOT NULL,
+	permission_id int4 NOT NULL,
+	CONSTRAINT auth_group_permissions_group_id_permission_id_0cd325b0_uniq UNIQUE (group_id, permission_id),
+	CONSTRAINT auth_group_permissions_pkey PRIMARY KEY (id),
+	CONSTRAINT auth_group_permissio_permission_id_84c5c92e_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED,
+	CONSTRAINT auth_group_permissions_group_id_b120cbf9_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED
+);
+CREATE INDEX auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permissions USING btree (group_id);
+CREATE INDEX auth_group_permissions_permission_id_84c5c92e ON public.auth_group_permissions USING btree (permission_id);
+
+-- Permissions
+
+ALTER TABLE public.auth_group_permissions OWNER TO postgres;
+GRANT ALL ON TABLE public.auth_group_permissions TO postgres;
+
+
+
+
+-- Permissions
+
+GRANT ALL ON SCHEMA public TO pg_database_owner;
+GRANT USAGE ON SCHEMA public TO public;
