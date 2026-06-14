@@ -13,5 +13,5 @@ python manage.py collectstatic --no-input
 # Apply any outstanding database migrations
 python manage.py migrate
 
-# Create admin user from environment variables if provided (non-fatal)
-python manage.py create_admin || true
+# Default departments + admin user (non-fatal if env vars missing)
+python manage.py setup_defaults || true

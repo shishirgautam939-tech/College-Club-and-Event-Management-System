@@ -70,6 +70,10 @@ const Register = () => {
       }
       if (payload.user_type !== "Faculty") {
         delete payload.department;
+      } else if (departments.length === 0) {
+        setError("Faculty registration is unavailable until departments are configured on the server.");
+        setLoading(false);
+        return;
       }
       // Convert department to number or remove if empty
       if (payload.department === "") {
@@ -168,21 +172,34 @@ const Register = () => {
         )}
 
         {form.user_type === "Faculty" && (
-          <select
-            name="department"
-            value={form.department}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          >
-            <option value="">Select Department</option>
-            {departments.map((dept) => (
-              <option key={dept.id} value={dept.id}>
-                {dept.department_name}
-              </option>
-            ))}
-          </select>
+          <>
+            {departments.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                No departments found yet. Ask an admin to run{" "}
+                <code className="text-xs">python manage.py setup_defaults</code> on the server.
+              </p>
+            ) : (
+              <select
+                name="department"
+                value={form.department}
+                onChange={handleChange}
+                required
+                className="input-field"
+              >
+                <option value="">Select Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.department_name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
         )}
+
+        <p className="text-xs text-stone-400">
+          Sign-up is for Students and Faculty only. Admin accounts are set up separately.
+        </p>
 
         <button
           type="submit"

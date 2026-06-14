@@ -22,8 +22,18 @@ const Login = () => {
       else if (role === "Faculty") navigate("/faculty");
       else navigate("/dashboard");
     } catch (err) {
-      const data = err.response?.data;
-      setError(data?.detail || "Login failed. Check your credentials.");
+      if (!err.response) {
+        setError(
+          "Cannot reach the server. Start the backend with: python manage.py runserver"
+        );
+      } else {
+        const data = err.response?.data;
+        setError(
+          data?.detail ||
+            data?.non_field_errors?.[0] ||
+            "Login failed. Check your email and password."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -71,6 +81,12 @@ const Login = () => {
           <Link to="/register" className="text-brand-700 hover:underline">
             Create an account
           </Link>
+        </p>
+
+        <p className="text-xs text-center text-stone-400 border-t border-stone-100 pt-4">
+          Admin accounts are created by the system, not via sign-up.
+          <br />
+          Local dev default: <strong>admin@gmail.com</strong> / <strong>admin123</strong>
         </p>
       </form>
     </div>

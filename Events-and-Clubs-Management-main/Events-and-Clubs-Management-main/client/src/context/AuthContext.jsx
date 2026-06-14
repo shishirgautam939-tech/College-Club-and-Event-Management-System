@@ -34,18 +34,22 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (identifier, password) => {
-    const res = await api.post("login/", { email: identifier, password });
+    const res = await api.post("login/", { email: identifier.trim(), password });
     localStorage.setItem("token", res.data.access);
     if (res.data.refresh) {
       localStorage.setItem("refreshToken", res.data.refresh);
     }
-    const decoded = jwtDecode(res.data.access);
+
+    const role = res.data.user_type;
+    const name = res.data.full_name;
+    const userId = res.data.id;
+
     setUser({
-      user_id: decoded.user_id,
-      role: decoded.user_type,
-      name: decoded.full_name,
+      user_id: userId,
+      role,
+      name,
     });
-    return decoded.user_type; // Return role for redirection
+    return role;
   };
 
   const logout = () => {

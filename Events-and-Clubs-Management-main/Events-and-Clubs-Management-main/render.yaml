@@ -20,3 +20,9 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@gmail.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        value: admin123
+      - key: DJANGO_SUPERUSER_FULL_NAME
+        value: Site Admin
