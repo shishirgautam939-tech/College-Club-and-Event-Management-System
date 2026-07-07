@@ -3,6 +3,8 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import Logo from "../../components/Logo";
 
+const EMAIL_ALLOWED_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com|edu)$/i;
+
 const Login = () => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -16,9 +18,14 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    const trimmedIdentifier = identifier.trim();
+    if (trimmedIdentifier.includes("@") && !EMAIL_ALLOWED_REGEX.test(trimmedIdentifier)) {
+      setError("Enter a valid email ending with .com or .edu (e.g. name@gmail.com or name@nce.edu).");
+      return;
+    }
     setLoading(true);
     try {
-      const role = await login(identifier, password);
+      const role = await login(trimmedIdentifier, password);
       if (role === "Admin") navigate("/admin");
       else if (role === "Faculty") navigate("/faculty");
       else navigate("/dashboard");
@@ -41,49 +48,175 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 flex flex-col items-center justify-center px-4 py-10">
-      <Link to="/" className="mb-8 no-underline">
-        <Logo compact markSize={40} />
-      </Link>
+    <div className="auth-shell">
+      {/* Brand / hero panel */}
+      <aside className="auth-art" aria-hidden="true">
+        <span className="auth-art-blob one" />
+        <span className="auth-art-blob two" />
+        <div className="auth-art-inner">
+          <div>
+            <Logo light markSize={36} />
+          </div>
+          <div>
+            <span className="auth-art-eyebrow">Evento · Campus OS</span>
+            <h1 className="auth-art-title">
+              Run every club, every event, every certificate — in one place.
+            </h1>
+            <p className="auth-art-sub">
+              From proposals to attendance to digital certificates, Evento gives
+              administrators, faculty, and students a single home for everything
+              that happens outside the classroom.
+            </p>
 
-      <form onSubmit={handleSubmit} className="card p-8 w-full max-w-md space-y-5">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-stone-800">Sign in</h2>
+            <div className="auth-art-features">
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">📝</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">Event proposals in seconds</span>
+                  <span className="auth-art-feature-sub">
+                    Faculty submit, admins review, students register.
+                  </span>
+                </div>
+              </div>
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">📱</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">QR attendance</span>
+                  <span className="auth-art-feature-sub">
+                    Frictionless check-in, instantly recorded for every participant.
+                  </span>
+                </div>
+              </div>
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">🏆</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">Digital certificates</span>
+                  <span className="auth-art-feature-sub">
+                    Issued automatically when events wrap.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="auth-art-footer">
+            <span>© Evento · College Club & Event Management</span>
+            <span className="dots">
+              <span className="dot active" />
+              <span className="dot" />
+              <span className="dot" />
+            </span>
+          </div>
         </div>
+      </aside>
 
-        {justRegistered && (
-          <div className="alert alert-success">Account created. You can sign in now.</div>
-        )}
-        {error && <div className="alert alert-error">{error}</div>}
-
-        <input
-          type="text"
-          placeholder="Email, roll number, or name"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          required
-          className="input-field"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="input-field"
-        />
-
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-
-        <p className="text-sm text-center text-stone-500">
-          No account?{" "}
-          <Link to="/register" className="text-brand-700 hover:underline">
-            Register
+      {/* Form panel */}
+      <main className="auth-form">
+        <div className="auth-form-inner">
+          <Link to="/" className="auth-form-mobile-brand no-underline">
+            <Logo compact markSize={36} />
           </Link>
-        </p>
-      </form>
+
+          <span className="auth-form-eyebrow">Welcome back</span>
+          <h2 className="auth-form-title">Sign in to Evento</h2>
+          <p className="auth-form-sub">
+            Use your college email, roll number, or name to continue.
+          </p>
+
+          {justRegistered && (
+            <div className="alert alert-success" style={{ marginTop: "1rem" }}>
+              <span>✅</span>
+              <span>Account created. You can sign in now.</span>
+            </div>
+          )}
+          {error && (
+            <div className="alert alert-error" style={{ marginTop: "1rem" }}>
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form-stack auth-form" autoComplete="on">
+            <div className="auth-field">
+              <label htmlFor="identifier" className="auth-field-label">
+                <span>Email, roll number, or name</span>
+              </label>
+              <div className="auth-field-input">
+                <span className="auth-field-icon" aria-hidden="true">
+                  {/* user icon */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <input
+                  id="identifier"
+                  type="text"
+                  placeholder="name@nce.edu or NCE078BCT012"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-field-label">
+                <span>Password</span>
+                <span style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 500 }}>
+                  secure connection
+                </span>
+              </label>
+              <div className="auth-field-input">
+                <span className="auth-field-icon" aria-hidden="true">
+                  {/* lock icon */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? (
+                <>
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  <span>Signing in…</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign in</span>
+                  <span aria-hidden="true">→</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="auth-link">
+            New to Evento?{" "}
+            <Link to="/register">Create an account</Link>
+          </div>
+
+          <div className="auth-callout">
+            <span aria-hidden="true">💡</span>
+            <span>
+              Tip: backend running? Start it with{" "}
+              <code>python manage.py runserver</code>. Need an admin? Run{" "}
+              <code>python manage.py setup_defaults</code>.
+            </span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

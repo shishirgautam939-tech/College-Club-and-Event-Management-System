@@ -1,12 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAllUsers, deleteUser } from "../../api/users";
+import { TableAvatar, ActionButton, EditIcon, TrashIcon, TableEmpty } from "../../components/TableBits";
+
+const ROLE_META = {
+  Students: { tone: "brand", pill: "pill-info", label: "Student", icon: "🎓" },
+  Faculty:  { tone: "violet", pill: "pill-violet", label: "Faculty", icon: "👨‍🏫" },
+  Staff:    { tone: "amber", pill: "pill-warn", label: "Staff", icon: "🛠️" },
+  Admins:   { tone: "accent", pill: "pill-accent", label: "Admin", icon: "🛡️" },
+};
 
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
+  const [search, setSearch] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -76,127 +85,175 @@ const Users = () => {
   else if (filterType === 'Staff') userGroups = { Staff: allGroups.Staff };
   else if (filterType === 'Admin') userGroups = { Admins: allGroups.Admins };
 
+  const applySearch = (group) => {
+    if (!search.trim()) return group;
+    const q = search.toLowerCase();
+    return group.filter(
+      (u) =>
+        u.full_name.toLowerCase().includes(q) ||
+        (u.roll_number || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        (u.branch || "").toLowerCase().includes(q)
+    );
+  };
+
+  const totalShown = Object.values(userGroups).reduce(
+    (sum, g) => sum + applySearch(g).length,
+    0
+  );
+  const totalAll = users.length;
+
   return (
-    <div className="space-y-8 p-4">
-      <div className="flex justify-between items-center border-b pb-4">
-        <h1 className="text-2xl font-bold text-gray-800">
-           {filterType ? `${filterType} Management` : "User Management"}
+    <div className="space-y-6">
+      <div className="page-header">
+        <span className="page-header-eyebrow">User Management</span>
+        <h1 className="page-header-title">
+          {filterType ? `${filterType} management` : "All users"}
         </h1>
-        <Link
-          to="/admin/users/create"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition shadow-sm text-sm"
-        >
-          Add New User
-        </Link>
+        <p className="page-header-sub">
+          {totalShown} of {totalAll} users shown
+        </p>
+        <div className="page-header-actions">
+          <Link to="/admin/users/create" className="btn-primary">
+            <span aria-hidden="true">+</span> Add New User
+          </Link>
+        </div>
       </div>
 
       {actionMsg.text && (
-        <div
-          className={`p-3 rounded text-sm ${
-            actionMsg.type === "success"
-              ? "bg-green-50 text-green-600"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {actionMsg.text}
+        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{actionMsg.text}</span>
         </div>
       )}
 
-      {Object.entries(userGroups).map(([groupName, groupUsers]) => (
-        <div key={groupName} className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-700 border-l-4 border-indigo-500 pl-2">
-                {groupName} <span className="text-sm font-normal text-gray-500">({groupUsers.length})</span>
-            </h2>
-            
-            {groupUsers.length > 0 ? (
-                <div className="overflow-x-auto border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                        <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                Name
-                            </th>
-                            {groupName === 'Students' && (
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                  Roll Number
-                              </th>
-                            )}
-                            {groupName === 'Students' && (
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                  Branch
-                              </th>
-                            )}
-                            {groupName === 'Faculty' && (
-                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                  Department
-                              </th>
-                            )}
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                Email
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                Status
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                            </th>
-                        </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                        {groupUsers.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r">
-                                    {user.full_name}
-                                </td>
-                                {groupName === 'Students' && (
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r font-mono">
-                                      {user.roll_number || "-"}
-                                  </td>
-                                )}
-                                {groupName === 'Students' && (
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r">
-                                      {user.branch || "-"}
-                                  </td>
-                                )}
-                                {groupName === 'Faculty' && (
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r">
-                                      {user.department_name || "-"}
-                                  </td>
-                                )}
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r">
-                                    {user.email}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center border-r">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                    user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                    }`}>
-                                    {user.is_active ? "Active" : "Inactive"}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                    <button
-                                      onClick={() => navigate(`/admin/users/${user.id}/edit`)}
-                                      className="text-indigo-600 hover:text-indigo-900 mr-4 cursor-pointer"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(user.id, user.full_name)}
-                                      className="text-red-600 hover:text-red-900 cursor-pointer"
-                                    >
-                                      Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : (
-                <p className="text-gray-500 italic text-sm">No {groupName.toLowerCase()} found.</p>
-            )}
+      <div className="table-wrap">
+        <div className="table-toolbar">
+          <div className="table-toolbar-title">
+            <span>All users</span>
+            <span className="table-toolbar-meta">· search across roles</span>
+          </div>
+          <div className="auth-field-input" style={{ width: "20rem", maxWidth: "100%" }}>
+            <span className="auth-field-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Search by name, roll, email, branch…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-      ))}
+
+        {Object.keys(userGroups).length === 0 ? (
+          <TableEmpty icon="👥" title="No users found" sub="Try a different search." />
+        ) : (
+          <div className="dashboard-panel-body">
+            {Object.entries(userGroups).map(([groupName, groupUsers]) => {
+              const visible = applySearch(groupUsers);
+              const meta = ROLE_META[groupName] || ROLE_META.Students;
+              return (
+                <section key={groupName} className="p-4">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.6rem",
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#1c1917" }}>
+                      <span style={{ marginRight: "0.4rem" }}>{meta.icon}</span>
+                      {groupName}
+                    </h3>
+                    <span className={`pill ${meta.pill}`}>{visible.length}</span>
+                  </div>
+                  {visible.length > 0 ? (
+                    <div className="overflow-x-auto border border-stone-200 rounded-xl">
+                      <table className="dashboard-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            {groupName === "Students" && <th>Roll Number</th>}
+                            {groupName === "Students" && <th>Branch</th>}
+                            {groupName === "Faculty" && <th>Department</th>}
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th className="text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visible.map((user) => (
+                            <tr key={user.id}>
+                              <td>
+                                <div className="cell-name">
+                                  <TableAvatar name={user.full_name} tone={meta.tone} />
+                                  <div className="cell-name-text">
+                                    <span className="cell-name-primary">{user.full_name}</span>
+                                    <span className="cell-name-secondary">{meta.label}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              {groupName === "Students" && (
+                                <td>
+                                  <span className="cell-mono">{user.roll_number || "—"}</span>
+                                </td>
+                              )}
+                              {groupName === "Students" && (
+                                <td>
+                                  <span className="pill pill-info">{user.branch || "—"}</span>
+                                </td>
+                              )}
+                              {groupName === "Faculty" && (
+                                <td>
+                                  <span className="pill pill-violet">
+                                    {user.department_name || "—"}
+                                  </span>
+                                </td>
+                              )}
+                              <td style={{ color: "#57534e" }}>{user.email}</td>
+                              <td>
+                                <span className={`pill ${user.is_active ? "pill-success" : "pill-muted"}`}>
+                                  {user.is_active ? "Active" : "Inactive"}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="cell-actions">
+                                  <ActionButton
+                                    title="Edit user"
+                                    onClick={() => navigate(`/admin/users/${user.id}/edit`)}
+                                  >
+                                    <EditIcon />
+                                  </ActionButton>
+                                  <ActionButton
+                                    tone="danger"
+                                    title="Delete user"
+                                    onClick={() => handleDelete(user.id, user.full_name)}
+                                  >
+                                    <TrashIcon />
+                                  </ActionButton>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: "0.85rem", color: "#a8a29e", fontStyle: "italic" }}>
+                      No matches in this group.
+                    </p>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,8 +1,25 @@
+
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
 
 import re
+
+EMAIL_DOMAIN_PATTERN = re.compile(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com|edu)$',
+    re.IGNORECASE,
+)
+
+
+def validate_email_domain(value):
+    email = (value or '').strip()
+    if not EMAIL_DOMAIN_PATTERN.match(email):
+        raise serializers.ValidationError(
+            'Enter a valid email address ending with .com or .edu (e.g. name@gmail.com or name@nce.edu).'
+        )
+    return email
+
 
 class UserSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(
@@ -15,6 +32,9 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+    def validate_email(self, value):
+        return validate_email_domain(value)
 
     def validate(self, data):
         user_type = data.get('user_type')
@@ -55,6 +75,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True, 'required': False},
         }
+
+    def validate_email(self, value):
+        return validate_email_domain(value)
 
     def validate(self, data):
         user_type = data.get('user_type', self.instance.user_type if self.instance else None)

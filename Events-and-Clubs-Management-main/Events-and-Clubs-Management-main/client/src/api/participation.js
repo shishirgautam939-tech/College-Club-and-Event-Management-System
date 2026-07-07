@@ -55,8 +55,11 @@ export const downloadMyEventCertificate = async (eventId) => {
   return response;
 };
 
-export const downloadCertificate = async (certificateId) => {
-  const response = await api.get(`certificates/${certificateId}/download/`, {
+export const downloadCertificate = async (certificateOrUrl) => {
+  const url = typeof certificateOrUrl === 'string'
+    ? certificateOrUrl
+    : `certificates/${certificateOrUrl}/download/`;
+  const response = await api.get(url, {
     responseType: "blob",
   });
   return response;

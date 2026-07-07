@@ -1,6 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { getAllUsers, getDepartments, deleteUser } from "../../api/users";
+import { TableAvatar, ActionButton, EditIcon, TrashIcon, TableEmpty } from "../../components/TableBits";
+
+const DEPT_COLORS = [
+  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-green-50 text-green-700 border-green-200",
+  "bg-yellow-50 text-yellow-700 border-yellow-200",
+  "bg-purple-50 text-purple-700 border-purple-200",
+  "bg-pink-50 text-pink-700 border-pink-200",
+];
+
+const DEPT_PILLS = ["pill-info", "pill-success", "pill-warn", "pill-violet", "pill-accent"];
+
+const DEPT_ICONS = ["📡", "🏗️", "⚡", "🔬", "📐"];
+
+const matchesDepartment = (userDepartment, deptId) =>
+  userDepartment === deptId || userDepartment?.id === deptId;
 
 const Faculty = () => {
   const [users, setUsers] = useState([]);
@@ -9,8 +25,11 @@ const Faculty = () => {
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const selectedDept = searchParams.get("dept");
+  const deptId = Number(selectedDept);
+  const validDeptId = Number.isInteger(deptId) && deptId > 0 ? deptId : null;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +61,24 @@ const Faculty = () => {
     }
   };
 
+  const deptInfo = departments.find((d) => d.id === validDeptId);
+  const filteredFaculty = useMemo(
+    () => users.filter((u) => matchesDepartment(u.department, validDeptId)),
+    [users, validDeptId]
+  );
+  const searchedFaculty = useMemo(() => {
+    if (!search.trim()) return filteredFaculty;
+    const q = search.toLowerCase();
+    return filteredFaculty.filter(
+      (u) =>
+        u.full_name.toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q)
+    );
+  }, [filteredFaculty, search]);
+
+  const deptIndex = departments.findIndex((d) => d.id === validDeptId);
+  const deptTone = DEPT_PILLS[(deptIndex >= 0 ? deptIndex : 0) % DEPT_PILLS.length];
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -54,44 +91,40 @@ const Faculty = () => {
     return <div className="bg-red-50 p-4 rounded-md text-red-600 text-center">{error}</div>;
   }
 
-  const DEPT_COLORS = [
-    "bg-blue-50 text-blue-700 border-blue-200",
-    "bg-green-50 text-green-700 border-green-200",
-    "bg-yellow-50 text-yellow-700 border-yellow-200",
-    "bg-purple-50 text-purple-700 border-purple-200",
-    "bg-pink-50 text-pink-700 border-pink-200",
-  ];
-
-  const DEPT_ICONS = ["📡", "🏗️", "⚡", "🔬", "📐"];
-
   // No department selected — show department cards
   if (!selectedDept) {
+    const totalFaculty = users.length;
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center border-b pb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Faculty by Department</h1>
-          <Link
-            to="/admin/users/create"
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition shadow-sm text-sm"
-          >
-            Add New Faculty
-          </Link>
+        <div className="page-header">
+          <span className="page-header-eyebrow">Faculty</span>
+          <h1 className="page-header-title">Browse by department</h1>
+          <p className="page-header-sub">
+            Choose a department to see its faculty members. {totalFaculty} faculty on campus.
+          </p>
+          <div className="page-header-actions">
+            <Link to="/admin/users/create" className="btn-primary">
+              <span aria-hidden="true">+</span> Add New Faculty
+            </Link>
+          </div>
         </div>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {departments.map((dept, idx) => {
-            const count = users.filter((u) => u.department === dept.id).length;
-            // Shorten display name
+            const count = users.filter((u) => matchesDepartment(u.department, dept.id)).length;
             const shortName = dept.department_name.replace("Department of ", "");
             return (
               <Link
                 key={dept.id}
                 to={`/admin/faculty?dept=${dept.id}`}
-                className={`rounded-lg border p-6 flex flex-col items-center gap-3 hover:shadow-md transition ${DEPT_COLORS[idx % DEPT_COLORS.length]}`}
+                className={`rounded-2xl border p-6 flex flex-col items-center gap-2 hover:-translate-y-1 transition shadow-sm ${DEPT_COLORS[idx % DEPT_COLORS.length]}`}
               >
                 <span className="text-4xl">{DEPT_ICONS[idx % DEPT_ICONS.length]}</span>
                 <p className="text-base font-bold text-center">{shortName}</p>
-                <p className="text-2xl font-bold">{count}</p>
-                <p className="text-xs opacity-70">Faculty Members</p>
+                <p className="text-2xl font-bold mt-1">{count}</p>
+                <span className={`pill ${DEPT_PILLS[idx % DEPT_PILLS.length]}`} style={{ marginTop: "0.4rem" }}>
+                  Faculty
+                </span>
               </Link>
             );
           })}
@@ -101,72 +134,142 @@ const Faculty = () => {
   }
 
   // Department selected — show faculty table
-  const deptId = parseInt(selectedDept);
-  const deptInfo = departments.find((d) => d.id === deptId);
-  const filteredFaculty = users.filter((u) => u.department === deptId);
+  if (!validDeptId) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <span className="page-header-eyebrow">Faculty</span>
+          <h1 className="page-header-title">Department not found</h1>
+          <p className="page-header-sub">The selected department is invalid. Please go back and choose a valid department.</p>
+          <div className="page-header-actions">
+            <button onClick={() => navigate("/admin/faculty")} className="btn-primary">
+              ← Back to Departments
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center border-b pb-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/admin/faculty")}
-            className="text-indigo-600 hover:text-indigo-800 cursor-pointer"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {deptInfo?.department_name || "Department"} — Faculty
-          </h1>
-          <span className="text-sm text-gray-500">({filteredFaculty.length})</span>
+      <div className="page-header">
+        <span className="page-header-eyebrow">Faculty · {deptInfo?.department_name || "Department"}</span>
+        <h1 className="page-header-title">{deptInfo?.department_name || "Department"} — Faculty</h1>
+        <p className="page-header-sub">
+          {filteredFaculty.length} members · {searchedFaculty.length} shown
+        </p>
+        <div className="page-header-actions">
+          <Link to="/admin/users/create" className="btn-primary">
+            <span aria-hidden="true">+</span> Add New Faculty
+          </Link>
         </div>
-        <Link
-          to="/admin/users/create"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition shadow-sm text-sm"
-        >
-          Add New Faculty
-        </Link>
       </div>
 
       {actionMsg.text && (
-        <div className={`p-3 rounded text-sm ${actionMsg.type === "success" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
-          {actionMsg.text}
+        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{actionMsg.text}</span>
         </div>
       )}
 
-      {filteredFaculty.length > 0 ? (
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Email</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Status</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredFaculty.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r">{user.full_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center border-r">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                      {user.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <button onClick={() => navigate(`/admin/users/${user.id}/edit`)} className="text-indigo-600 hover:text-indigo-900 mr-4 cursor-pointer">Edit</button>
-                    <button onClick={() => handleDelete(user.id, user.full_name)} className="text-red-600 hover:text-red-900 cursor-pointer">Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="table-wrap">
+        <div className="table-toolbar">
+          <div className="table-toolbar-title">
+            <button
+              onClick={() => navigate("/admin/faculty")}
+              className="btn-ghost"
+              style={{ marginRight: "0.5rem" }}
+            >
+              ← Departments
+            </button>
+            <span style={{ color: "#a8a29e" }}>·</span>
+            <span className={`pill ${deptTone}`} style={{ marginLeft: "0.4rem" }}>
+              {deptInfo?.department_name || "Department"}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
+              <span className="auth-field-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Search name or email…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <span className="table-toolbar-meta">{searchedFaculty.length} of {filteredFaculty.length}</span>
+          </div>
         </div>
-      ) : (
-        <p className="text-gray-500 italic text-sm">No faculty members found in this department.</p>
-      )}
+
+        {searchedFaculty.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Faculty member</th>
+                  <th>Email</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th className="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchedFaculty.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="cell-name">
+                        <TableAvatar name={user.full_name} tone="violet" />
+                        <div className="cell-name-text">
+                          <span className="cell-name-primary">{user.full_name}</span>
+                          <span className="cell-name-secondary">Faculty</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ color: "#57534e" }}>{user.email}</td>
+                    <td>
+                      <span className={`pill ${deptTone}`}>{deptInfo?.department_name || "—"}</span>
+                    </td>
+                    <td>
+                      <span className={`pill ${user.is_active ? "pill-success" : "pill-muted"}`}>
+                        {user.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="cell-actions">
+                        <ActionButton
+                          title="Edit faculty"
+                          onClick={() => navigate(`/admin/users/${user.id}/edit`)}
+                        >
+                          <EditIcon />
+                        </ActionButton>
+                        <ActionButton
+                          tone="danger"
+                          title="Delete faculty"
+                          onClick={() => handleDelete(user.id, user.full_name)}
+                        >
+                          <TrashIcon />
+                        </ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <TableEmpty
+            icon="👨‍🏫"
+            title={search ? "No matches" : "No faculty in this department"}
+            sub={search ? "Try a different search term." : "Add the first faculty member."}
+          />
+        )}
+      </div>
     </div>
   );
 };

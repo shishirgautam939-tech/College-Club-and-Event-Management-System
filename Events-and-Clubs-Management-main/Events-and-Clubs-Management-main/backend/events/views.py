@@ -152,6 +152,7 @@ class ApprovedEventsView(generics.ListAPIView):
         user = self.request.user
         return (
             Event.objects.select_related('club', 'created_by')
+            .prefetch_related('registrations')
             .filter(status='Approved')
             .annotate(
                 registration_count=Count('registrations'),

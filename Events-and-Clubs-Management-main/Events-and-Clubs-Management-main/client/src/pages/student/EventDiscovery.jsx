@@ -3,6 +3,7 @@ import { getApprovedEvents } from "../../api/events";
 import { registerForEvent, unregisterFromEvent } from "../../api/participation";
 import { formatDateTime } from "../../utils/formatDate";
 import useAuth from "../../hooks/useAuth";
+import EventQRModal from "../../components/EventQRModal";
 
 const EventDiscovery = () => {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ const EventDiscovery = () => {
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [actionInProgress, setActionInProgress] = useState(null);
   const [search, setSearch] = useState("");
+  const [qrEvent, setQrEvent] = useState(null);
 
   useEffect(() => {
     fetchEvents();
@@ -130,14 +132,36 @@ const EventDiscovery = () => {
               {user?.role === "Student" && (
                 <div className="pt-4 border-t border-stone-100">
                   {ev.is_registered ? (
-                    <button
-                      type="button"
-                      onClick={() => handleUnregister(ev.id)}
-                      disabled={actionInProgress === ev.id}
-                      className="btn-secondary w-full text-red-700 hover:bg-red-50"
-                    >
-                      {actionInProgress === ev.id ? "Processing..." : "Cancel registration"}
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs text-stone-500">
+                        <span>
+                          {ev.attendance_qr_active
+                            ? "QR ready for check-in"
+                            : "Preparing your QR…"}
+                        </span>
+                        {ev.attendance_qr_active && (
+                          <span className="badge badge-success">Active</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setQrEvent(ev)}
+                          disabled={!ev.attendance_qr_active}
+                          className="btn-primary flex-1"
+                        >
+                          Show my QR
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUnregister(ev.id)}
+                          disabled={actionInProgress === ev.id}
+                          className="btn-secondary text-red-700 hover:bg-red-50"
+                        >
+                          {actionInProgress === ev.id ? "…" : "Cancel"}
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -157,6 +181,17 @@ const EventDiscovery = () => {
             </article>
           ))}
         </div>
+      )}
+
+      {qrEvent && (
+        <EventQRModal
+          event={qrEvent}
+          onClose={() => setQrEvent(null)}
+          onAfterClose={() => {
+            setQrEvent(null);
+            fetchEvents();
+          }}
+        />
       )}
     </div>
   );

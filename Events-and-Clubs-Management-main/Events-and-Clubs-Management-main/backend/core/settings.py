@@ -28,12 +28,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-*xp6q6rypvr83&am#!h++rnl-l_h2e1qc%q=3m&4+^^j4h5pzm')
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
+LOCAL_DEVELOPMENT = (
+    not os.getenv('DATABASE_URL')
+    and os.getenv('DB_HOST', 'localhost') in ('localhost', '127.0.0.1')
+)
 
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
     if host.strip()
 ]
+
+if DEBUG or LOCAL_DEVELOPMENT:
+    for host in ['localhost', '127.0.0.1', '[::1]']:
+        if host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host)
 
 # Render.com sets this automatically
 RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
@@ -171,6 +180,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
@@ -194,7 +206,7 @@ SIMPLE_JWT = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Production security settings
-if not DEBUG:
+if not DEBUG and not LOCAL_DEVELOPMENT:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

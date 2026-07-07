@@ -11,7 +11,21 @@ const BRANCH_MAP = {
   BEI: "BEI - Electronics",
 };
 
+const BRANCH_PILL = {
+  BCT: "pill-info",
+  BCE: "pill-success",
+  BEE: "pill-warn",
+  BEI: "pill-violet",
+};
+
 const ROLL_REGEX = /^NCE0\d{2}(BCT|BCE|BEE|BEI)0\d{2}$/i;
+const EMAIL_ALLOWED_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com|edu)$/i;
+
+const ROLES = [
+  { value: "Student", label: "Student", icon: "🎓" },
+  { value: "Faculty", label: "Faculty", icon: "👨‍🏫" },
+  { value: "Staff", label: "Staff", icon: "🛠️" },
+];
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -52,6 +66,10 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!EMAIL_ALLOWED_REGEX.test(form.email.trim())) {
+      setError("Enter a valid email ending with .com or .edu (e.g. name@gmail.com or name@nce.edu).");
+      return;
+    }
     setLoading(true);
     try {
       const payload = { ...form };
@@ -98,121 +116,296 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 flex flex-col items-center justify-center px-4 py-10">
-      <Link to="/" className="mb-8 no-underline">
-        <Logo compact markSize={40} />
-      </Link>
-
-      <form onSubmit={handleSubmit} className="card p-8 w-full max-w-md space-y-5">
-        <h2 className="text-xl font-semibold text-center text-stone-800">
-          Create account
-        </h2>
-
-        {error && <div className="alert alert-error">{error}</div>}
-
-        <input
-          type="text"
-          name="full_name"
-          placeholder="Full Name"
-          value={form.full_name}
-          onChange={handleChange}
-          required
-          className="input-field"
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          required
-          className="input-field"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-          className="input-field"
-        />
-        <select
-          name="user_type"
-          value={form.user_type}
-          onChange={handleChange}
-          className="input-field"
-        >
-          <option value="Student">Student</option>
-          <option value="Faculty">Faculty</option>
-          <option value="Staff">Staff</option>
-        </select>
-
-        {form.user_type === "Student" && (
+    <div className="auth-shell">
+      {/* Brand / hero panel */}
+      <aside className="auth-art" aria-hidden="true">
+        <span className="auth-art-blob one" />
+        <span className="auth-art-blob two" />
+        <div className="auth-art-inner">
           <div>
-            <input
-              type="text"
-              name="roll_number"
-              placeholder="Roll Number (e.g. NCE078BCT012)"
-              value={form.roll_number}
-              onChange={handleRollChange}
-              required
-              maxLength={12}
-              className="input-field uppercase"
-            />
-            {form.branch && (
-              <p className="mt-1 text-sm text-brand-700">
-                {BRANCH_MAP[form.branch] || form.branch}
-              </p>
-            )}
+            <Logo light markSize={36} />
           </div>
-        )}
+          <div>
+            <span className="auth-art-eyebrow">Join Evento</span>
+            <h1 className="auth-art-title">
+              Create your campus account in less than a minute.
+            </h1>
+            <p className="auth-art-sub">
+              Sign up once and unlock event discovery, QR check-in, and digital
+              certificates for everything your college has to offer.
+            </p>
 
-        {form.user_type === "Faculty" && (
-          <>
-            {departments.length === 0 ? (
-              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">
-                No departments found yet. Ask an admin to run{" "}
-                <code className="text-xs">python manage.py setup_defaults</code> on the server.
-              </p>
-            ) : (
-              <select
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-                required
-                className="input-field"
-              >
-                <option value="">Select Department</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.department_name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </>
-        )}
+            <div className="auth-art-features">
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">🎯</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">Tailored to your role</span>
+                  <span className="auth-art-feature-sub">
+                    Students, faculty, and staff each get the right view.
+                  </span>
+                </div>
+              </div>
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">🪪</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">Verified roll numbers</span>
+                  <span className="auth-art-feature-sub">
+                    Format NCE078BCT012 — branch is auto-detected.
+                  </span>
+                </div>
+              </div>
+              <div className="auth-art-feature">
+                <span className="auth-art-feature-icon">🔒</span>
+                <div className="auth-art-feature-text">
+                  <span className="auth-art-feature-title">Your data stays yours</span>
+                  <span className="auth-art-feature-sub">
+                    Secure sign-in with email ending in .com or .edu.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="auth-art-footer">
+            <span>Already have an account?</span>
+            <Link to="/login" style={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+              Sign in →
+            </Link>
+          </div>
+        </div>
+      </aside>
 
-        <p className="text-xs text-stone-400 text-center">
-          Admin accounts are set up separately.
-        </p>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-primary w-full"
-        >
-          {loading ? "Creating..." : "Register"}
-        </button>
-
-        <p className="text-sm text-center text-stone-500">
-          Already have an account?{" "}
-          <Link to="/login" className="text-brand-700 hover:underline">
-            Sign in
+      {/* Form panel */}
+      <main className="auth-form">
+        <div className="auth-form-inner">
+          <Link to="/" className="auth-form-mobile-brand no-underline">
+            <Logo compact markSize={36} />
           </Link>
-        </p>
-      </form>
+
+          <span className="auth-form-eyebrow">Create account</span>
+          <h2 className="auth-form-title">Join Evento</h2>
+          <p className="auth-form-sub">
+            Pick your role and tell us a little about you.
+          </p>
+
+          {error && (
+            <div className="alert alert-error" style={{ marginTop: "1rem" }}>
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form-stack auth-form" autoComplete="on">
+            {/* Role tabs */}
+            <div className="auth-field">
+              <label className="auth-field-label">
+                <span>I am a…</span>
+              </label>
+              <div className="auth-role-tabs" role="tablist">
+                {ROLES.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={form.user_type === r.value}
+                    onClick={() => setForm({ ...form, user_type: r.value })}
+                    className={
+                      "auth-role-tab" +
+                      (form.user_type === r.value ? " auth-role-tab-active" : "")
+                    }
+                  >
+                    <span aria-hidden="true">{r.icon}</span>
+                    <span>{r.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="full_name" className="auth-field-label">
+                <span>Full name</span>
+              </label>
+              <div className="auth-field-input">
+                <span className="auth-field-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <input
+                  id="full_name"
+                  type="text"
+                  name="full_name"
+                  placeholder="e.g. Brishav Joshi"
+                  value={form.full_name}
+                  onChange={handleChange}
+                  required
+                  autoComplete="name"
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-field-label">
+                <span>Email</span>
+                <span style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 500 }}>
+                  .com or .edu only
+                </span>
+              </label>
+              <div className="auth-field-input">
+                <span className="auth-field-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </span>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  placeholder="name@gmail.com or name@nce.edu"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|edu)"
+                  title="Email must end with .com or .edu"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-field-label">
+                <span>Password</span>
+              </label>
+              <div className="auth-field-input">
+                <span className="auth-field-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <input
+                  id="password"
+                  type="password"
+                  name="password"
+                  placeholder="At least 6 characters"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            {form.user_type === "Student" && (
+              <div className="auth-field">
+                <label htmlFor="roll_number" className="auth-field-label">
+                  <span>Roll number</span>
+                  <span style={{ fontSize: "0.7rem", color: "#a8a29e", fontWeight: 500 }}>
+                    NCE0XXBRANCH0XX
+                  </span>
+                </label>
+                <div className="auth-field-input">
+                  <span className="auth-field-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="16" rx="2" />
+                      <path d="M7 8h10M7 12h10M7 16h6" />
+                    </svg>
+                  </span>
+                  <input
+                    id="roll_number"
+                    type="text"
+                    name="roll_number"
+                    placeholder="NCE078BCT012"
+                    value={form.roll_number}
+                    onChange={handleRollChange}
+                    required
+                    maxLength={12}
+                    autoComplete="off"
+                    style={{ textTransform: "uppercase" }}
+                  />
+                </div>
+                {form.branch && (
+                  <div className="auth-field-hint brand">
+                    <span className={`pill ${BRANCH_PILL[form.branch] || "pill-brand"}`} style={{ marginRight: "0.4rem" }}>
+                      {form.branch}
+                    </span>
+                    {BRANCH_MAP[form.branch] || form.branch}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {form.user_type === "Faculty" && (
+              <div className="auth-field">
+                <label htmlFor="department" className="auth-field-label">
+                  <span>Department</span>
+                </label>
+                {departments.length === 0 ? (
+                  <div className="auth-callout">
+                    <span aria-hidden="true">⚠️</span>
+                    <span>
+                      No departments found yet. Ask an admin to run{" "}
+                      <code>python manage.py setup_defaults</code>.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="auth-field-input">
+                    <span className="auth-field-icon" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 21h18" />
+                        <path d="M5 21V7l8-4 8 4v14" />
+                        <path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01" />
+                      </svg>
+                    </span>
+                    <select
+                      id="department"
+                      name="department"
+                      value={form.department}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.department_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? (
+                <>
+                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  <span>Creating account…</span>
+                </>
+              ) : (
+                <>
+                  <span>Create my account</span>
+                  <span aria-hidden="true">→</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="auth-link">
+            Already have an account?{" "}
+            <Link to="/login">Sign in</Link>
+          </div>
+
+          <div className="auth-callout">
+            <span aria-hidden="true">🛡️</span>
+            <span>
+              Admin accounts are created separately by a system administrator.
+            </span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

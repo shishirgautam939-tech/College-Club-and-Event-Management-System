@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getEventAttendance,
@@ -9,6 +9,7 @@ import {
   generateEventCertificates,
 } from "../../api/participation";
 import { completeEvent } from "../../api/events";
+import { TableAvatar, TableEmpty } from "../../components/TableBits";
 
 const EventAttendance = () => {
   const { eventId } = useParams();
@@ -22,21 +23,25 @@ const EventAttendance = () => {
   const [saving, setSaving] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchAttendance();
   }, [eventId]);
 
   const fetchAttendance = async () => {
+    setLoading(true);
+    setError("");
     try {
       const res = await getEventAttendance(eventId);
+      const nextParticipants = Array.isArray(res.data.participants) ? res.data.participants : [];
       setEventInfo({
         event_id: res.data.event_id,
         event_title: res.data.event_title,
         event_status: res.data.event_status,
       });
       setParticipants(
-        res.data.participants.map((p) => ({
+        nextParticipants.map((p) => ({
           ...p,
           present: p.present ?? false,
         })),
@@ -64,8 +69,34 @@ const EventAttendance = () => {
   };
 
   useEffect(() => {
-    if (activeTab === "qr") fetchQR();
+    if (activeTab === "qr") {
+      fetchQR();
+    }
   }, [activeTab, eventId]);
+
+  useEffect(() => {
+    if (activeTab !== "qr" || eventInfo?.event_status !== "Approved") return;
+    if (qrLoading || qrData?.qr_active) return;
+    handleActivateQR();
+  }, [activeTab, eventInfo?.event_status, qrData?.qr_active, qrLoading]);
+
+  const filteredParticipants = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return participants;
+
+    return participants.filter((participant) => {
+      const haystack = [
+        participant.user_name,
+        participant.user_email,
+        participant.roll_number,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [participants, search]);
 
   const togglePresent = (userId) => {
     setParticipants((prev) =>
@@ -175,26 +206,34 @@ const EventAttendance = () => {
   }
 
   const presentCount = participants.filter((p) => p.present).length;
+  const presentPct = participants.length > 0
+    ? Math.round((presentCount / participants.length) * 100)
+    : 0;
 
   return (
     <div className="page-shell space-y-6">
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-sm text-brand-700 hover:text-brand-900 mb-2 inline-flex items-center gap-1"
-        >
-          ← Back
-        </button>
-        <h1 className="page-title">Attendance — {eventInfo?.event_title}</h1>
-        <p className="page-subtitle">
-          {presentCount} of {participants.length} marked present · Status: {eventInfo?.event_status}
+      <div className="page-header">
+        <span className="page-header-eyebrow">Attendance · {eventInfo?.event_status}</span>
+        <h1 className="page-header-title">{eventInfo?.event_title}</h1>
+        <p className="page-header-sub">
+          {presentCount} of {participants.length} marked present · {presentPct}% attendance
         </p>
+        <div className="page-header-actions">
+          <span className="page-header-stat">
+            <span>✅</span>
+            <span><strong>{presentCount}</strong> present</span>
+          </span>
+          <span className="page-header-stat">
+            <span>👥</span>
+            <span><strong>{participants.length}</strong> registered</span>
+          </span>
+        </div>
       </div>
 
       {actionMsg.text && (
         <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionMsg.text}
+          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{actionMsg.text}</span>
         </div>
       )}
 
@@ -204,14 +243,14 @@ const EventAttendance = () => {
           onClick={() => setActiveTab("manual")}
           className={activeTab === "manual" ? "tab-btn-active" : "tab-btn"}
         >
-          Manual list
+          <span aria-hidden="true">📋</span> Manual list
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("qr")}
           className={activeTab === "qr" ? "tab-btn-active" : "tab-btn"}
         >
-          QR check-in
+          <span aria-hidden="true">📱</span> QR check-in
         </button>
       </div>
 
@@ -221,7 +260,7 @@ const EventAttendance = () => {
             When the event ends, mark it complete to issue certificates to attendees.
           </p>
           <button type="button" onClick={handleCompleteEvent} className="btn-primary">
-            Complete event & issue certificates
+            <span aria-hidden="true">🏁</span> Complete event & issue certificates
           </button>
         </div>
       )}
@@ -232,66 +271,111 @@ const EventAttendance = () => {
             Regenerate certificates for all present attendees if needed.
           </p>
           <button type="button" onClick={handleGenerateCertificates} className="btn-secondary">
-            Regenerate certificates
+            <span aria-hidden="true">🔁</span> Regenerate certificates
           </button>
         </div>
       )}
 
       {activeTab === "manual" && (
-        <>
-          {participants.length === 0 ? (
-            <div className="card p-8 text-center">
-              <p className="text-stone-500">No students have registered for this event yet.</p>
+        <div className="table-wrap">
+          <div className="table-toolbar">
+            <div className="table-toolbar-title">
+              <span>Attendees</span>
+              <span className="table-toolbar-meta">· {filteredParticipants.length} of {participants.length}</span>
             </div>
-          ) : (
-            <div className="card overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-stone-100 bg-cream-100">
-                <div className="flex gap-2">
-                  <button type="button" onClick={markAllPresent} className="chip chip-success">
-                    Mark all present
-                  </button>
-                  <button type="button" onClick={markAllAbsent} className="chip chip-muted">
-                    Mark all absent
-                  </button>
-                </div>
-                <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
-                  {saving ? "Saving..." : "Save attendance"}
-                </button>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
+                <span className="auth-field-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search name, roll, email…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Student</th>
-                      <th>Roll No.</th>
-                      <th>Email</th>
-                      <th className="text-center">Present</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((p, idx) => (
-                      <tr key={p.user_id} className={p.present ? "row-present" : ""}>
-                        <td className="text-stone-400">{idx + 1}</td>
-                        <td className="font-medium">{p.user_name}</td>
-                        <td>{p.roll_number || "—"}</td>
-                        <td>{p.user_email}</td>
-                        <td className="text-center">
+              <button type="button" onClick={markAllPresent} className="chip chip-success">
+                ✓ Mark all present
+              </button>
+              <button type="button" onClick={markAllAbsent} className="chip chip-muted">
+                ✗ Mark all absent
+              </button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
+                {saving ? "Saving…" : "Save attendance"}
+              </button>
+            </div>
+          </div>
+
+          {participants.length === 0 ? (
+            <TableEmpty
+              icon="🎟️"
+              title="No registrations yet"
+              sub="Students will appear here once they register for the event."
+            />
+          ) : filteredParticipants.length === 0 ? (
+            <TableEmpty icon="🔍" title="No matches" sub="Try a different search term." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "3rem" }}>#</th>
+                    <th>Student</th>
+                    <th>Roll no.</th>
+                    <th>Email</th>
+                    <th className="text-center">Present</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredParticipants.map((p, idx) => (
+                    <tr key={p.user_id} className={p.present ? "row-present" : ""}>
+                      <td style={{ color: "#a8a29e", fontWeight: 500 }}>{idx + 1}</td>
+                      <td>
+                        <div className="cell-name">
+                          <TableAvatar name={p.user_name} tone={p.present ? "brand" : "muted"} />
+                          <div className="cell-name-text">
+                            <span className="cell-name-primary">{p.user_name}</span>
+                            <span className="cell-name-secondary">
+                              {p.present ? "Present" : "Not yet checked in"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="cell-mono">{p.roll_number || "—"}</span>
+                      </td>
+                      <td style={{ color: "#57534e" }}>{p.user_email}</td>
+                      <td className="text-center">
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                            cursor: "pointer",
+                          }}
+                        >
                           <input
                             type="checkbox"
                             checked={p.present}
                             onChange={() => togglePresent(p.user_id)}
                             className="w-5 h-5 accent-brand-700"
                           />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <span className={`pill ${p.present ? "pill-success" : "pill-muted"}`}>
+                            {p.present ? "Present" : "Absent"}
+                          </span>
+                        </label>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {activeTab === "qr" && (

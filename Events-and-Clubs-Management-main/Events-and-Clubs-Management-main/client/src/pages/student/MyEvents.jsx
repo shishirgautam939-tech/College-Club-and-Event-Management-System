@@ -7,6 +7,7 @@ import {
 } from "../../api/participation";
 import { saveBlobAsFile } from "../../utils/downloadFile";
 import { formatDateTime } from "../../utils/formatDate";
+import EventQRModal from "../../components/EventQRModal";
 
 const MyEvents = () => {
   const [registrations, setRegistrations] = useState([]);
@@ -15,7 +16,7 @@ const MyEvents = () => {
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [actionInProgress, setActionInProgress] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
-
+  const [qrEvent, setQrEvent] = useState(null);
   useEffect(() => {
     fetchRegistrations();
   }, []);
@@ -78,11 +79,11 @@ const MyEvents = () => {
   };
 
   return (
-    <div className="page-shell">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="page-shell space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="page-title">My Events</h1>
-          <p className="page-subtitle">Events you&apos;ve signed up for, your check-ins, and certificates.</p>
+          <p className="page-subtitle">Track your registrations, attendance, and certificates in one place.</p>
         </div>
         <Link to="/scan-attendance" className="btn-primary">
           Scan QR to check in
@@ -97,7 +98,7 @@ const MyEvents = () => {
       )}
 
       {registrations.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="card p-10 text-center bg-gradient-to-br from-white to-cream-50 shadow-sm">
           <p className="text-stone-500 mb-4">You haven&apos;t joined any events yet.</p>
           <Link to="/dashboard" className="btn-primary inline-block">
             Browse events
@@ -107,18 +108,33 @@ const MyEvents = () => {
         <>
           {upcoming.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-800">Upcoming ({upcoming.length})</h2>
+              <h2 className="text-lg font-semibold text-stone-900">Upcoming ({upcoming.length})</h2>
               <div className="grid gap-4">
                 {upcoming.map((r) => (
                   <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
+                      <h3 className="font-semibold text-stone-900">{r.event_title}</h3>
                       <p className="text-sm text-brand-700">{r.club_name}</p>
                       <p className="text-sm text-stone-500 mt-1">
                         {formatDateTime(r.event_date)} · {r.venue || "Venue TBA"}
                       </p>
+                      {(r.attendance_qr_active || r.qr_payload) ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <span className="badge badge-success">{r.attendance_qr_active ? "QR active" : "QR ready"}</span>
+                          <button
+                            type="button"
+                            onClick={() => setQrEvent({
+                              id: r.event,
+                              title: r.event_title,
+                            })}
+                            className="btn-secondary"
+                          >
+                            View QR
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Link to="/scan-attendance" className="btn-secondary">
                         Check in
                       </Link>
@@ -128,7 +144,7 @@ const MyEvents = () => {
                         disabled={actionInProgress === r.event}
                         className="btn-secondary text-red-700 hover:bg-red-50"
                       >
-                        {actionInProgress === r.event ? "..." : "Unregister"}
+                        {actionInProgress === r.event ? "Processing..." : "Unregister"}
                       </button>
                     </div>
                   </div>
@@ -139,19 +155,19 @@ const MyEvents = () => {
 
           {completed.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-800">Past events ({completed.length})</h2>
+              <h2 className="text-lg font-semibold text-stone-900">Past events ({completed.length})</h2>
               <div className="grid gap-4">
                 {completed.map((r) => (
                   <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
+                      <h3 className="font-semibold text-stone-900">{r.event_title}</h3>
                       <p className="text-sm text-brand-700">{r.club_name}</p>
                       <p className="text-sm text-stone-500 mt-1">
                         {formatDateTime(r.event_date)} · {r.venue || "—"}
                       </p>
                       <div className="mt-2">{attendanceBadge(r.attendance_status)}</div>
                     </div>
-                    {r.attendance_status === "Present" && (
+                    {(r.event_status === "Completed") && (
                       <button
                         type="button"
                         onClick={() => handleDownloadCertificate(r)}
@@ -167,6 +183,14 @@ const MyEvents = () => {
             </section>
           )}
         </>
+      )}
+
+      {qrEvent && (
+        <EventQRModal
+          event={qrEvent}
+          onClose={() => setQrEvent(null)}
+          onAfterClose={() => setQrEvent(null)}
+        />
       )}
     </div>
   );

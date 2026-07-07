@@ -210,7 +210,7 @@ const FacultyEvents = () => {
             <p className="text-gray-500 text-sm">No approved events.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-sm dashboard-table">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-gray-500">
                     <th className="py-2 pr-4 font-medium">Title</th>

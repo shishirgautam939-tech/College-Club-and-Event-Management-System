@@ -2,6 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { getClubs, getClubMembers, addClubMember, removeClubMember } from "../../api/clubs";
 import { getAllUsers } from "../../api/users";
+import { TableAvatar, ActionButton, TrashIcon, TableEmpty } from "../../components/TableBits";
+
+const POSITION_PILL = {
+  President: "pill-accent",
+  "Vice President": "pill-violet",
+  Secretary: "pill-info",
+  Treasurer: "pill-warn",
+  "Event Manager": "pill-brand",
+  Member: "pill-muted",
+};
 
 const Clubs = () => {
   const [clubs, setClubs] = useState([]);
@@ -11,6 +21,7 @@ const Clubs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
+  const [search, setSearch] = useState("");
   const location = useLocation();
 
   // Add member state
@@ -69,6 +80,18 @@ const Clubs = () => {
     return clubs.find((club) => String(club.id) === String(selectedClubId)) || null;
   }, [clubs, selectedClubId]);
 
+  const searchedMembers = useMemo(() => {
+    if (!search.trim()) return members;
+    const q = search.toLowerCase();
+    return members.filter(
+      (m) =>
+        m.full_name.toLowerCase().includes(q) ||
+        (m.roll_number || "").toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q) ||
+        (m.position || "").toLowerCase().includes(q)
+    );
+  }, [members, search]);
+
   const handleShowAddMember = async () => {
     setShowAddMember(true);
     try {
@@ -125,39 +148,45 @@ const Clubs = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Club Management</h1>
-        <Link
-          to="/admin/clubs/create"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition shadow-sm text-sm"
-        >
-          Create Club
-        </Link>
+      <div className="page-header">
+        <span className="page-header-eyebrow">Clubs</span>
+        <h1 className="page-header-title">Club management</h1>
+        <p className="page-header-sub">
+          {clubs.length} clubs on campus · {selectedClub ? `${members.length} members in this club` : "Pick a club to manage its members."}
+        </p>
+        <div className="page-header-actions">
+          <Link to="/admin/clubs/create" className="btn-primary">
+            <span aria-hidden="true">+</span> Create Club
+          </Link>
+        </div>
       </div>
 
       {actionMsg.text && (
-        <div
-          className={`p-3 rounded text-sm ${
-            actionMsg.type === "success"
-              ? "bg-green-50 text-green-600"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {actionMsg.text}
+        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{actionMsg.text}</span>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Club</label>
+      {/* Club selector card */}
+      <div className="card p-5">
+        <label className="auth-field-label" style={{ marginBottom: "0.5rem" }}>
+          <span>Select a club</span>
+          {selectedClub && (
+            <span className="pill pill-accent">{selectedClub.is_council ? "Council" : "Club"}</span>
+          )}
+        </label>
         <select
           value={selectedClubId}
           onChange={(e) => {
             setSelectedClubId(e.target.value);
             setShowAddMember(false);
+            setSearch("");
           }}
-          className="w-full md:w-96 border border-gray-300 px-3 py-2"
+          className="input-field"
+          style={{ maxWidth: "32rem" }}
         >
-          <option value="">-- Choose a club --</option>
+          <option value="">— Choose a club —</option>
           {clubs.map((club) => (
             <option key={club.id} value={club.id}>
               {club.club_name}
@@ -165,59 +194,119 @@ const Clubs = () => {
             </option>
           ))}
         </select>
+
+        {selectedClub && (
+          <div
+            className="dashboard-panel"
+            style={{
+              marginTop: "1rem",
+              padding: 0,
+              border: "1px solid var(--color-cream-200)",
+            }}
+          >
+            <div className="dashboard-panel-body" style={{ padding: "1rem 1.25rem" }}>
+              <div style={{ display: "grid", gap: "0.6rem", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+                <div>
+                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
+                    Faculty Coordinator
+                  </p>
+                  <p style={{ marginTop: "0.2rem", color: "#1c1917", fontWeight: 500 }}>
+                    {selectedClub.faculty_coordinator_name || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
+                    Type
+                  </p>
+                  <p style={{ marginTop: "0.2rem" }}>
+                    <span className={`pill ${selectedClub.is_council ? "pill-violet" : "pill-brand"}`}>
+                      {selectedClub.is_council ? "Council" : "Club"}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
+                    Members
+                  </p>
+                  <p style={{ marginTop: "0.2rem", color: "#1c1917", fontWeight: 600 }}>
+                    {members.length}
+                  </p>
+                </div>
+                {selectedClub.description && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
+                      About
+                    </p>
+                    <p style={{ marginTop: "0.2rem", color: "#57534e", fontSize: "0.875rem" }}>
+                      {selectedClub.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Club Info */}
-      {selectedClub && (
-        <div className="bg-white border border-gray-200 p-4 text-sm space-y-1">
-          <p>
-            <span className="font-medium text-gray-700">Club:</span>{" "}
-            {selectedClub.club_name}
-          </p>
-          {selectedClub.description && (
-            <p>
-              <span className="font-medium text-gray-700">Description:</span>{" "}
-              {selectedClub.description}
-            </p>
-          )}
-          <p>
-            <span className="font-medium text-gray-700">Faculty Coordinator:</span>{" "}
-            {selectedClub.faculty_coordinator_name || "—"}
-          </p>
-          <p>
-            <span className="font-medium text-gray-700">Type:</span>{" "}
-            {selectedClub.is_council ? "Council" : "Club"}
-          </p>
-        </div>
-      )}
-
       {/* Members Table */}
-      <div className="overflow-x-auto border border-gray-200 bg-white">
-        <div className="px-4 py-3 border-b bg-gray-50 font-semibold text-gray-700 flex items-center justify-between">
-          <span>
-            {selectedClub ? `${selectedClub.club_name} Members` : "Club Members"}
-          </span>
-          {selectedClubId && (
-            <button
-              onClick={handleShowAddMember}
-              className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 cursor-pointer"
-            >
-              + Add Member
-            </button>
-          )}
+      <div className="table-wrap">
+        <div className="table-toolbar">
+          <div className="table-toolbar-title">
+            {selectedClub ? `${selectedClub.club_name} members` : "Club members"}
+            <span className="table-toolbar-meta">· {searchedMembers.length} of {members.length}</span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+            {selectedClubId && (
+              <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
+                <span className="auth-field-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search members…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            )}
+            {selectedClubId && (
+              <button
+                onClick={handleShowAddMember}
+                className="btn-primary"
+              >
+                <span aria-hidden="true">+</span> Add Member
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Add Member Form */}
         {showAddMember && selectedClubId && (
-          <div className="px-4 py-3 border-b border-gray-200 bg-indigo-50 flex items-end gap-3 flex-wrap">
+          <div
+            style={{
+              padding: "1rem 1.25rem",
+              background: "linear-gradient(90deg, var(--color-brand-50) 0%, transparent 100%)",
+              borderBottom: "1px solid #e7e5e4",
+              display: "flex",
+              gap: "0.75rem",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+            }}
+          >
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Student</label>
+              <label className="auth-field-label" style={{ marginBottom: "0.25rem" }}>
+                <span style={{ fontSize: "0.75rem" }}>Student</span>
+              </label>
               <select
                 value={newMemberUserId}
                 onChange={(e) => setNewMemberUserId(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm w-64"
+                className="input-field"
+                style={{ width: "16rem" }}
               >
-                <option value="">Select a student...</option>
+                <option value="">Select a student…</option>
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.full_name} ({s.roll_number || s.email})
@@ -226,11 +315,14 @@ const Clubs = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Position</label>
+              <label className="auth-field-label" style={{ marginBottom: "0.25rem" }}>
+                <span style={{ fontSize: "0.75rem" }}>Position</span>
+              </label>
               <select
                 value={newMemberPosition}
                 onChange={(e) => setNewMemberPosition(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="input-field"
+                style={{ width: "10rem" }}
               >
                 <option value="Member">Member</option>
                 <option value="Event Manager">Event Manager</option>
@@ -243,74 +335,81 @@ const Clubs = () => {
             <button
               onClick={handleAddMember}
               disabled={addingMember || !newMemberUserId}
-              className="px-4 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 cursor-pointer"
+              className="btn-primary"
             >
-              {addingMember ? "Adding..." : "Add"}
+              {addingMember ? "Adding…" : "Add"}
             </button>
             <button
               onClick={() => setShowAddMember(false)}
-              className="px-4 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer"
+              className="btn-secondary"
             >
               Cancel
             </button>
           </div>
         )}
 
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left border-r">Full Name</th>
-              <th className="px-4 py-2 text-left border-r">Email</th>
-              <th className="px-4 py-2 text-left border-r">Roll Number</th>
-              <th className="px-4 py-2 text-left border-r">Designated Role</th>
-              <th className="px-4 py-2 text-left border-r">Joined At</th>
-              <th className="px-4 py-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {!selectedClubId && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Select a club to view members.
-                </td>
-              </tr>
-            )}
-
-            {selectedClubId && membersLoading && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading members...
-                </td>
-              </tr>
-            )}
-
-            {selectedClubId && !membersLoading && members.map((member) => (
-              <tr key={member.id}>
-                <td className="px-4 py-2 border-r">{member.full_name}</td>
-                <td className="px-4 py-2 border-r">{member.email}</td>
-                <td className="px-4 py-2 border-r">{member.roll_number || "-"}</td>
-                <td className="px-4 py-2 border-r">{member.position}</td>
-                <td className="px-4 py-2 border-r">{member.joined_at}</td>
-                <td className="px-4 py-2 text-center">
-                  <button
-                    onClick={() => handleRemoveMember(member.id, member.full_name)}
-                    className="text-red-600 hover:text-red-900 text-xs cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {selectedClubId && !membersLoading && members.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No members found for this club.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {!selectedClubId ? (
+          <TableEmpty icon="🏛️" title="No club selected" sub="Choose a club from the list above to manage its members." />
+        ) : membersLoading ? (
+          <div style={{ padding: "2rem", textAlign: "center", color: "#78716c" }}>Loading members…</div>
+        ) : searchedMembers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Email</th>
+                  <th>Roll number</th>
+                  <th>Designated role</th>
+                  <th>Joined at</th>
+                  <th className="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchedMembers.map((member) => (
+                  <tr key={member.id}>
+                    <td>
+                      <div className="cell-name">
+                        <TableAvatar name={member.full_name} tone="accent" />
+                        <div className="cell-name-text">
+                          <span className="cell-name-primary">{member.full_name}</span>
+                          <span className="cell-name-secondary">Member</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ color: "#57534e" }}>{member.email}</td>
+                    <td>
+                      <span className="cell-mono">{member.roll_number || "—"}</span>
+                    </td>
+                    <td>
+                      <span className={`pill ${POSITION_PILL[member.position] || "pill-muted"}`}>
+                        {member.position}
+                      </span>
+                    </td>
+                    <td style={{ color: "#57534e", fontSize: "0.85rem" }}>{member.joined_at}</td>
+                    <td>
+                      <div className="cell-actions">
+                        <ActionButton
+                          tone="danger"
+                          title="Remove member"
+                          onClick={() => handleRemoveMember(member.id, member.full_name)}
+                        >
+                          <TrashIcon />
+                        </ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <TableEmpty
+            icon="👥"
+            title={search ? "No matches" : "No members yet"}
+            sub={search ? "Try a different search term." : "Add the first member to this club."}
+          />
+        )}
       </div>
     </div>
   );
