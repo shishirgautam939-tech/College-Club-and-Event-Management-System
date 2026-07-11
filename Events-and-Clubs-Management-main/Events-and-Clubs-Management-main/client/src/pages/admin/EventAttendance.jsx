@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { Check, Loader2, Search, Ticket, Users, X } from "lucide-react";
 import {
   getEventAttendance,
   markAttendance,
@@ -10,10 +11,25 @@ import {
 } from "../../api/participation";
 import { completeEvent } from "../../api/events";
 import { TableAvatar, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const EventAttendance = () => {
   const { eventId } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("manual");
   const [eventInfo, setEventInfo] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -27,6 +43,7 @@ const EventAttendance = () => {
 
   useEffect(() => {
     fetchAttendance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   const fetchAttendance = async () => {
@@ -72,12 +89,14 @@ const EventAttendance = () => {
     if (activeTab === "qr") {
       fetchQR();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, eventId]);
 
   useEffect(() => {
     if (activeTab !== "qr" || eventInfo?.event_status !== "Approved") return;
     if (qrLoading || qrData?.qr_active) return;
     handleActivateQR();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, eventInfo?.event_status, qrData?.qr_active, qrLoading]);
 
   const filteredParticipants = useMemo(() => {
@@ -199,10 +218,17 @@ const EventAttendance = () => {
     }
   };
 
-  if (loading) return <p className="text-stone-500">Loading attendance...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading attendance…</span>
+      </div>
+    );
+  }
 
   if (error) {
-    return <div className="alert alert-error">{error}</div>;
+    return <InlineAlert type="error">{error}</InlineAlert>;
   }
 
   const presentCount = participants.filter((p) => p.present).length;
@@ -211,219 +237,167 @@ const EventAttendance = () => {
     : 0;
 
   return (
-    <div className="page-shell space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">Attendance · {eventInfo?.event_status}</span>
-        <h1 className="page-header-title">{eventInfo?.event_title}</h1>
-        <p className="page-header-sub">
-          {presentCount} of {participants.length} marked present · {presentPct}% attendance
-        </p>
-        <div className="page-header-actions">
-          <span className="page-header-stat">
-            <span>✅</span>
-            <span><strong>{presentCount}</strong> present</span>
-          </span>
-          <span className="page-header-stat">
-            <span>👥</span>
-            <span><strong>{participants.length}</strong> registered</span>
-          </span>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={`Attendance · ${eventInfo?.event_status}`}
+        title={eventInfo?.event_title}
+        subtitle={`${presentCount} of ${participants.length} marked present · ${presentPct}% attendance`}
+        actions={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+              <Check className="size-3.5" /> <strong>{presentCount}</strong> present
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+              <Users className="size-3.5" /> <strong>{participants.length}</strong> registered
+            </span>
+          </>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{actionMsg.text}</span>
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("manual")}
-          className={activeTab === "manual" ? "tab-btn-active" : "tab-btn"}
-        >
-          <span aria-hidden="true">📋</span> Manual list
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("qr")}
-          className={activeTab === "qr" ? "tab-btn-active" : "tab-btn"}
-        >
-          <span aria-hidden="true">📱</span> QR check-in
-        </button>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="manual">Manual list</TabsTrigger>
+          <TabsTrigger value="qr">QR check-in</TabsTrigger>
+        </TabsList>
 
-      {eventInfo?.event_status === "Approved" && (
-        <div className="card p-4 flex flex-wrap gap-3 items-center justify-between">
-          <p className="text-sm text-stone-600">
-            When the event ends, mark it complete to issue certificates to attendees.
-          </p>
-          <button type="button" onClick={handleCompleteEvent} className="btn-primary">
-            <span aria-hidden="true">🏁</span> Complete event & issue certificates
-          </button>
-        </div>
-      )}
+        {eventInfo?.event_status === "Approved" && (
+          <Card className="mt-4 flex flex-row flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-muted-foreground">
+              When the event ends, mark it complete to issue certificates to attendees.
+            </p>
+            <Button onClick={handleCompleteEvent}>Complete event &amp; issue certificates</Button>
+          </Card>
+        )}
 
-      {eventInfo?.event_status === "Completed" && (
-        <div className="card p-4 flex flex-wrap gap-3 items-center justify-between">
-          <p className="text-sm text-stone-600">
-            Regenerate certificates for all present attendees if needed.
-          </p>
-          <button type="button" onClick={handleGenerateCertificates} className="btn-secondary">
-            <span aria-hidden="true">🔁</span> Regenerate certificates
-          </button>
-        </div>
-      )}
+        {eventInfo?.event_status === "Completed" && (
+          <Card className="mt-4 flex flex-row flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-muted-foreground">Regenerate certificates for all present attendees if needed.</p>
+            <Button variant="outline" onClick={handleGenerateCertificates}>Regenerate certificates</Button>
+          </Card>
+        )}
 
-      {activeTab === "manual" && (
-        <div className="table-wrap">
-          <div className="table-toolbar">
-            <div className="table-toolbar-title">
-              <span>Attendees</span>
-              <span className="table-toolbar-meta">· {filteredParticipants.length} of {participants.length}</span>
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-              <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-                <span className="auth-field-icon" aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search name, roll, email…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+        <TabsContent value="manual" className="mt-4">
+          <Card className="gap-0 p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                Attendees <span className="font-normal text-muted-foreground">· {filteredParticipants.length} of {participants.length}</span>
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-56 max-w-full">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search name, roll, email…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 pl-9"
+                  />
+                </div>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={markAllPresent}>
+                  <Check className="size-3.5" /> Mark all present
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={markAllAbsent}>
+                  <X className="size-3.5" /> Mark all absent
+                </Button>
+                <Button type="button" size="sm" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save attendance"}
+                </Button>
               </div>
-              <button type="button" onClick={markAllPresent} className="chip chip-success">
-                ✓ Mark all present
-              </button>
-              <button type="button" onClick={markAllAbsent} className="chip chip-muted">
-                ✗ Mark all absent
-              </button>
-              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
-                {saving ? "Saving…" : "Save attendance"}
-              </button>
             </div>
-          </div>
 
-          {participants.length === 0 ? (
-            <TableEmpty
-              icon="🎟️"
-              title="No registrations yet"
-              sub="Students will appear here once they register for the event."
-            />
-          ) : filteredParticipants.length === 0 ? (
-            <TableEmpty icon="🔍" title="No matches" sub="Try a different search term." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: "3rem" }}>#</th>
-                    <th>Student</th>
-                    <th>Roll no.</th>
-                    <th>Email</th>
-                    <th className="text-center">Present</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {participants.length === 0 ? (
+              <TableEmpty icon={<Ticket className="size-5" />} title="No registrations yet" sub="Students will appear here once they register for the event." />
+            ) : filteredParticipants.length === 0 ? (
+              <TableEmpty title="No matches" sub="Try a different search term." />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Roll no.</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-center">Present</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredParticipants.map((p, idx) => (
-                    <tr key={p.user_id} className={p.present ? "row-present" : ""}>
-                      <td style={{ color: "#a8a29e", fontWeight: 500 }}>{idx + 1}</td>
-                      <td>
-                        <div className="cell-name">
+                    <TableRow key={p.user_id} className={p.present ? "bg-emerald-50/60" : undefined}>
+                      <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
                           <TableAvatar name={p.user_name} tone={p.present ? "brand" : "muted"} />
-                          <div className="cell-name-text">
-                            <span className="cell-name-primary">{p.user_name}</span>
-                            <span className="cell-name-secondary">
-                              {p.present ? "Present" : "Not yet checked in"}
-                            </span>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{p.user_name}</span>
+                            <span className="text-xs text-muted-foreground">{p.present ? "Present" : "Not yet checked in"}</span>
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        <span className="cell-mono">{p.roll_number || "—"}</span>
-                      </td>
-                      <td style={{ color: "#57534e" }}>{p.user_email}</td>
-                      <td className="text-center">
-                        <label
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.4rem",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={p.present}
-                            onChange={() => togglePresent(p.user_id)}
-                            className="w-5 h-5 accent-brand-700"
-                          />
-                          <span className={`pill ${p.present ? "pill-success" : "pill-muted"}`}>
-                            {p.present ? "Present" : "Absent"}
-                          </span>
+                      </TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{p.roll_number || "—"}</code>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{p.user_email}</TableCell>
+                      <TableCell className="text-center">
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <Checkbox checked={p.present} onCheckedChange={() => togglePresent(p.user_id)} />
+                          <StatusBadge tone={p.present ? "success" : "muted"}>{p.present ? "Present" : "Absent"}</StatusBadge>
                         </label>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </TabsContent>
 
-      {activeTab === "qr" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-stone-800">Display this at the venue</h2>
-            <p className="text-sm text-stone-500">
+        <TabsContent value="qr" className="mt-4 grid gap-5 lg:grid-cols-2">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-foreground">Display this at the venue</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Students scan the code with their phone to check in. Only registered students can verify.
             </p>
 
             {qrLoading ? (
-              <p className="text-stone-500">Loading QR...</p>
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Loading QR...
+              </div>
             ) : qrData?.qr_active && qrData?.qr_image_base64 ? (
-              <div className="flex flex-col items-center gap-4">
+              <div className="mt-4 flex flex-col items-center gap-4">
                 <img
                   src={`data:image/png;base64,${qrData.qr_image_base64}`}
                   alt="Event attendance QR code"
-                  className="w-64 h-64 rounded-2xl border border-stone-200 p-3 bg-white"
+                  className="size-64 rounded-xl border bg-white p-3"
                 />
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-muted-foreground">
                   Expires: {qrData.expires_at ? new Date(qrData.expires_at).toLocaleString() : "—"}
                 </p>
-                <button type="button" onClick={handleDeactivateQR} className="btn-secondary">
+                <Button variant="outline" onClick={handleDeactivateQR}>
                   Turn off QR check-in
-                </button>
+                </Button>
               </div>
             ) : (
-              <div className="text-center py-8 space-y-4">
-                <p className="text-stone-500">QR check-in is not active yet.</p>
-                <button type="button" onClick={handleActivateQR} className="btn-primary">
-                  Start QR check-in
-                </button>
+              <div className="mt-4 flex flex-col items-center gap-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">QR check-in is not active yet.</p>
+                <Button onClick={handleActivateQR}>Start QR check-in</Button>
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="card p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-stone-800">How it works</h2>
-            <ol className="list-decimal list-inside text-sm text-stone-600 space-y-2">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-foreground">How it works</h2>
+            <ol className="mt-3 list-inside list-decimal space-y-2 text-sm text-muted-foreground">
               <li>Start QR check-in when the event begins.</li>
               <li>Display the code on a screen or print it at the entrance.</li>
               <li>Students open Scan QR from the menu and point their camera.</li>
               <li>Attendance is recorded instantly for registered participants.</li>
               <li>Complete the event when finished to send certificates.</li>
             </ol>
-          </div>
-        </div>
-      )}
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -1,21 +1,26 @@
 import { Link } from "react-router-dom";
+import { ShieldAlert } from "lucide-react";
+import useAuth from "../hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const Unauthorized = () => {
+  const { user } = useAuth();
+  // Send each role back to its own home — pointing an admin at the student
+  // dashboard would strand them in the reduced shared layout.
+  const home = user?.role === "Admin" ? "/admin" : user?.role === "Faculty" ? "/faculty" : "/dashboard";
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-center">
-      <h1 className="text-6xl font-bold text-red-500 mb-4">403</h1>
-      <h2 className="text-2xl font-semibold text-gray-700 mb-2">
-        Access Denied
-      </h2>
-      <p className="text-gray-500 mb-6">
-        You don&apos;t have permission to view this page.
-      </p>
-      <Link
-        to="/dashboard"
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-      >
-        Go to Dashboard
-      </Link>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <span className="flex size-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <ShieldAlert className="size-8" />
+      </span>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Access denied</h1>
+        <p className="mt-1 text-sm text-muted-foreground">You don&apos;t have permission to view this page.</p>
+      </div>
+      <Button size="lg" className="mt-2" nativeButton={false} render={<Link to={home} />}>
+        Go to your dashboard
+      </Button>
     </div>
   );
 };

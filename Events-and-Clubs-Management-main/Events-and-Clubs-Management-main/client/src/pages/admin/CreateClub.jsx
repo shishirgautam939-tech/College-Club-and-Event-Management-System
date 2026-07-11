@@ -1,7 +1,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Building2 } from "lucide-react";
 import { createClub } from "../../api/clubs";
 import { getAllUsers } from "../../api/users";
+import PageHeader from "@/components/PageHeader";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const CreateClub = () => {
   const navigate = useNavigate();
@@ -35,11 +51,8 @@ const CreateClub = () => {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -70,93 +83,86 @@ const CreateClub = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Create New Club</h2>
+    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+      <PageHeader
+        eyebrow={<><Building2 className="size-3.5" /> New organization</>}
+        title="Create a club"
+        subtitle="Set up a new campus organization and assign a faculty coordinator."
+      />
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded border border-red-200 text-sm">
-          {error}
-        </div>
-      )}
+      <Card className="p-6">
+        {error && <InlineAlert type="error" className="mb-4">{error}</InlineAlert>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Club Name</label>
-          <input
-            type="text"
-            name="club_name"
-            value={formData.club_name}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="e.g. NCE IT Club"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="club_name">Club name</Label>
+            <Input
+              id="club_name"
+              type="text"
+              name="club_name"
+              value={formData.club_name}
+              onChange={handleChange}
+              required
+              placeholder="e.g. NCE IT Club"
+              className="h-10"
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="Brief description of the club..."
-          />
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Brief description of the club..."
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Faculty Coordinator</label>
-          <select
-            name="faculty_coordinator"
-            value={formData.faculty_coordinator}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="">-- Select Faculty --</option>
-            {fetchingFaculty ? (
-              <option disabled>Loading...</option>
-            ) : (
-              facultyList.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.full_name} ({f.email})
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="faculty_coordinator">Faculty coordinator</Label>
+            <Select
+              value={formData.faculty_coordinator}
+              onValueChange={(value) => setFormData({ ...formData, faculty_coordinator: value })}
+            >
+              <SelectTrigger id="faculty_coordinator" className="h-10 w-full">
+                <SelectValue placeholder={fetchingFaculty ? "Loading…" : "— Select faculty —"}>
+                  {() => {
+                    const f = facultyList.find((fac) => String(fac.id) === formData.faculty_coordinator);
+                    return f ? `${f.full_name} (${f.email})` : fetchingFaculty ? "Loading…" : "— Select faculty —";
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {facultyList.map((f) => (
+                  <SelectItem key={f.id} value={String(f.id)}>
+                    {f.full_name} ({f.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="is_council"
-            checked={formData.is_council}
-            onChange={handleChange}
-            id="is_council"
-            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-          />
-          <label htmlFor="is_council" className="text-sm font-medium text-gray-700">
+          <label htmlFor="is_council" className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Checkbox
+              id="is_council"
+              checked={formData.is_council}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_council: checked === true })}
+            />
             This is a council (not a regular club)
           </label>
-        </div>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            type="button"
-            onClick={() => navigate("/admin/clubs")}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
-          >
-            {loading ? "Creating..." : "Create Club"}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={() => navigate("/admin/clubs")}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Create club"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 };

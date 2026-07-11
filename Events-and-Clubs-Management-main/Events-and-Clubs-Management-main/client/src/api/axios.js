@@ -15,6 +15,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -27,12 +28,15 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = String(originalRequest?.url || "");
+    const isAuthRequest =
+      requestUrl.includes("login/") || requestUrl.includes("token/refresh/");
 
     if (
       error.response?.status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
-      originalRequest.url !== "login/" &&
-      originalRequest.url !== "token/refresh/"
+      !isAuthRequest
     ) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem("refreshToken");
@@ -47,6 +51,7 @@ api.interceptors.response.use(
           if (res.data.refresh) {
             localStorage.setItem("refreshToken", res.data.refresh);
           }
+          originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
           return api(originalRequest);
         } catch {

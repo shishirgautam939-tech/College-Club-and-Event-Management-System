@@ -1,19 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Loader2, Pencil, Plus, Search, Trash2, UserCog } from "lucide-react";
 import { getAllUsers, getDepartments, deleteUser } from "../../api/users";
-import { TableAvatar, ActionButton, EditIcon, TrashIcon, TableEmpty } from "../../components/TableBits";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const DEPT_COLORS = [
-  "bg-blue-50 text-blue-700 border-blue-200",
-  "bg-green-50 text-green-700 border-green-200",
-  "bg-yellow-50 text-yellow-700 border-yellow-200",
-  "bg-purple-50 text-purple-700 border-purple-200",
-  "bg-pink-50 text-pink-700 border-pink-200",
-];
-
-const DEPT_PILLS = ["pill-info", "pill-success", "pill-warn", "pill-violet", "pill-accent"];
-
-const DEPT_ICONS = ["📡", "🏗️", "⚡", "🔬", "📐"];
+const DEPT_TONE = ["info", "success", "warning", "violet", "accent"];
 
 const matchesDepartment = (userDepartment, deptId) =>
   userDepartment === deptId || userDepartment?.id === deptId;
@@ -26,6 +32,7 @@ const Faculty = () => {
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const navigate = useNavigate();
   const selectedDept = searchParams.get("dept");
   const deptId = Number(selectedDept);
@@ -49,8 +56,9 @@ const Faculty = () => {
     fetchData();
   }, []);
 
-  const handleDelete = async (userId, userName) => {
-    if (!confirm(`Delete faculty "${userName}"? This action cannot be undone.`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { id: userId, full_name: userName } = deleteTarget;
     setActionMsg({ type: "", text: "" });
     try {
       await deleteUser(userId);
@@ -58,6 +66,8 @@ const Faculty = () => {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
       setActionMsg({ type: "error", text: err.response?.data?.detail || "Failed to delete." });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -77,54 +87,49 @@ const Faculty = () => {
   }, [filteredFaculty, search]);
 
   const deptIndex = departments.findIndex((d) => d.id === validDeptId);
-  const deptTone = DEPT_PILLS[(deptIndex >= 0 ? deptIndex : 0) % DEPT_PILLS.length];
+  const deptTone = DEPT_TONE[(deptIndex >= 0 ? deptIndex : 0) % DEPT_TONE.length];
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading…</span>
       </div>
     );
   }
 
-  if (error) {
-    return <div className="bg-red-50 p-4 rounded-md text-red-600 text-center">{error}</div>;
-  }
+  if (error) return <InlineAlert type="error">{error}</InlineAlert>;
 
   // No department selected — show department cards
   if (!selectedDept) {
     const totalFaculty = users.length;
     return (
-      <div className="space-y-6">
-        <div className="page-header">
-          <span className="page-header-eyebrow">Faculty</span>
-          <h1 className="page-header-title">Browse by department</h1>
-          <p className="page-header-sub">
-            Choose a department to see its faculty members. {totalFaculty} faculty on campus.
-          </p>
-          <div className="page-header-actions">
-            <Link to="/admin/users/create" className="btn-primary">
-              <span aria-hidden="true">+</span> Add New Faculty
-            </Link>
-          </div>
-        </div>
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          eyebrow="Faculty"
+          title="Browse by department"
+          subtitle={`Choose a department to see its faculty members. ${totalFaculty} faculty on campus.`}
+          actions={
+            <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/users/create" />}>
+              <Plus className="size-4" /> Add new faculty
+            </Button>
+          }
+        />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {departments.map((dept, idx) => {
             const count = users.filter((u) => matchesDepartment(u.department, dept.id)).length;
             const shortName = dept.department_name.replace("Department of ", "");
             return (
-              <Link
-                key={dept.id}
-                to={`/admin/faculty?dept=${dept.id}`}
-                className={`rounded-2xl border p-6 flex flex-col items-center gap-2 hover:-translate-y-1 transition shadow-sm ${DEPT_COLORS[idx % DEPT_COLORS.length]}`}
-              >
-                <span className="text-4xl">{DEPT_ICONS[idx % DEPT_ICONS.length]}</span>
-                <p className="text-base font-bold text-center">{shortName}</p>
-                <p className="text-2xl font-bold mt-1">{count}</p>
-                <span className={`pill ${DEPT_PILLS[idx % DEPT_PILLS.length]}`} style={{ marginTop: "0.4rem" }}>
-                  Faculty
-                </span>
+              <Link key={dept.id} to={`/admin/faculty?dept=${dept.id}`}>
+                <Card className="flex flex-col items-center gap-1.5 p-6 text-center transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <UserCog className="size-5" />
+                  </span>
+                  <p className="mt-1 font-semibold text-foreground">{shortName}</p>
+                  <p className="text-2xl font-bold tracking-tight text-foreground">{count}</p>
+                  <StatusBadge tone={DEPT_TONE[idx % DEPT_TONE.length]}>Faculty</StatusBadge>
+                </Card>
               </Link>
             );
           })}
@@ -136,140 +141,120 @@ const Faculty = () => {
   // Department selected — show faculty table
   if (!validDeptId) {
     return (
-      <div className="space-y-6">
-        <div className="page-header">
-          <span className="page-header-eyebrow">Faculty</span>
-          <h1 className="page-header-title">Department not found</h1>
-          <p className="page-header-sub">The selected department is invalid. Please go back and choose a valid department.</p>
-          <div className="page-header-actions">
-            <button onClick={() => navigate("/admin/faculty")} className="btn-primary">
-              ← Back to Departments
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          eyebrow="Faculty"
+          title="Department not found"
+          subtitle="The selected department is invalid. Please go back and choose a valid department."
+          actions={
+            <Button variant="secondary" className="gap-1.5" onClick={() => navigate("/admin/faculty")}>
+              <ArrowLeft className="size-4" /> Back to departments
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">Faculty · {deptInfo?.department_name || "Department"}</span>
-        <h1 className="page-header-title">{deptInfo?.department_name || "Department"} — Faculty</h1>
-        <p className="page-header-sub">
-          {filteredFaculty.length} members · {searchedFaculty.length} shown
-        </p>
-        <div className="page-header-actions">
-          <Link to="/admin/users/create" className="btn-primary">
-            <span aria-hidden="true">+</span> Add New Faculty
-          </Link>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={`Faculty · ${deptInfo?.department_name || "Department"}`}
+        title={`${deptInfo?.department_name || "Department"} — Faculty`}
+        subtitle={`${filteredFaculty.length} members · ${searchedFaculty.length} shown`}
+        actions={
+          <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/users/create" />}>
+            <Plus className="size-4" /> Add new faculty
+          </Button>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{actionMsg.text}</span>
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
-      <div className="table-wrap">
-        <div className="table-toolbar">
-          <div className="table-toolbar-title">
-            <button
-              onClick={() => navigate("/admin/faculty")}
-              className="btn-ghost"
-              style={{ marginRight: "0.5rem" }}
-            >
-              ← Departments
-            </button>
-            <span style={{ color: "#a8a29e" }}>·</span>
-            <span className={`pill ${deptTone}`} style={{ marginLeft: "0.4rem" }}>
-              {deptInfo?.department_name || "Department"}
-            </span>
+      <Card className="gap-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/admin/faculty")}>
+              <ArrowLeft className="size-4" /> Departments
+            </Button>
+            <span className="text-muted-foreground">·</span>
+            <StatusBadge tone={deptTone}>{deptInfo?.department_name || "Department"}</StatusBadge>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-              <span className="auth-field-icon" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </span>
-              <input
+          <div className="flex items-center gap-2">
+            <div className="relative w-64 max-w-full">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search name or email…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="h-9 pl-9"
               />
             </div>
-            <span className="table-toolbar-meta">{searchedFaculty.length} of {filteredFaculty.length}</span>
+            <span className="text-sm text-muted-foreground">{searchedFaculty.length} of {filteredFaculty.length}</span>
           </div>
         </div>
 
         {searchedFaculty.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Faculty member</th>
-                  <th>Email</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th className="text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchedFaculty.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="cell-name">
-                        <TableAvatar name={user.full_name} tone="violet" />
-                        <div className="cell-name-text">
-                          <span className="cell-name-primary">{user.full_name}</span>
-                          <span className="cell-name-secondary">Faculty</span>
-                        </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Faculty member</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchedFaculty.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <TableAvatar name={user.full_name} tone="violet" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{user.full_name}</span>
+                        <span className="text-xs text-muted-foreground">Faculty</span>
                       </div>
-                    </td>
-                    <td style={{ color: "#57534e" }}>{user.email}</td>
-                    <td>
-                      <span className={`pill ${deptTone}`}>{deptInfo?.department_name || "—"}</span>
-                    </td>
-                    <td>
-                      <span className={`pill ${user.is_active ? "pill-success" : "pill-muted"}`}>
-                        {user.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="cell-actions">
-                        <ActionButton
-                          title="Edit faculty"
-                          onClick={() => navigate(`/admin/users/${user.id}/edit`)}
-                        >
-                          <EditIcon />
-                        </ActionButton>
-                        <ActionButton
-                          tone="danger"
-                          title="Delete faculty"
-                          onClick={() => handleDelete(user.id, user.full_name)}
-                        >
-                          <TrashIcon />
-                        </ActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                  <TableCell>
+                    <StatusBadge tone={deptTone}>{deptInfo?.department_name || "—"}</StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={user.is_active ? "success" : "muted"}>{user.is_active ? "Active" : "Inactive"}</StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <ActionButton title="Edit faculty" onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
+                        <Pencil className="size-4" />
+                      </ActionButton>
+                      <ActionButton tone="danger" title="Delete faculty" onClick={() => setDeleteTarget(user)}>
+                        <Trash2 className="size-4" />
+                      </ActionButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <TableEmpty
-            icon="👨‍🏫"
             title={search ? "No matches" : "No faculty in this department"}
             sub={search ? "Try a different search term." : "Add the first faculty member."}
           />
         )}
-      </div>
+      </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete faculty?"
+        description={deleteTarget ? `Delete faculty "${deleteTarget.full_name}"? This action cannot be undone.` : ""}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

@@ -191,6 +191,29 @@ STORAGES = {
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Password hashing
+# ----------------
+# Use Argon2 as the primary password hasher (memory-hard, OWASP-recommended)
+# and keep PBKDF2 as the fallback so any user that still has a PBKDF2 hash
+# in the database can still log in. On the next successful login their
+# password will be re-hashed with Argon2 automatically.
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
+
+# Argon2 parameters tuned for a 1-CPU / 512 MB instance (Render free tier).
+# Defaults are 102400 (100 MiB) memory_cost which is too aggressive for
+# constrained hosts; we drop to 64 MiB and 2 iterations for fast logins
+# while still being memory-hard.
+ARGON2_HASHER = {
+    'memory_cost': 65536,   # 64 MiB
+    'time_cost': 2,         # 2 iterations
+    'parallelism': 1,
+}
+
 # JWT Token Configuration
 from datetime import timedelta
 

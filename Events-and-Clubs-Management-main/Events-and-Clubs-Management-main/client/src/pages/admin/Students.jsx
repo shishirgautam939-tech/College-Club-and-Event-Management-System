@@ -1,13 +1,29 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, GraduationCap, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { getAllUsers, deleteUser } from "../../api/users";
-import { TableAvatar, ActionButton, EditIcon, TrashIcon, TableEmpty } from "../../components/TableBits";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const BRANCHES = [
-  { code: "BCT", label: "BCT - Computer", tone: "pill-info", cardTone: "bg-blue-50 text-blue-700 border-blue-200", icon: "💻" },
-  { code: "BCE", label: "BCE - Civil", tone: "pill-success", cardTone: "bg-green-50 text-green-700 border-green-200", icon: "🏗️" },
-  { code: "BEE", label: "BEE - Electrical", tone: "pill-warn", cardTone: "bg-yellow-50 text-yellow-700 border-yellow-200", icon: "⚡" },
-  { code: "BEI", label: "BEI - Electronics", tone: "pill-violet", cardTone: "bg-purple-50 text-purple-700 border-purple-200", icon: "📡" },
+  { code: "BCT", label: "BCT - Computer", tone: "info" },
+  { code: "BCE", label: "BCE - Civil", tone: "success" },
+  { code: "BEE", label: "BEE - Electrical", tone: "warning" },
+  { code: "BEI", label: "BEI - Electronics", tone: "violet" },
 ];
 
 const Students = () => {
@@ -17,6 +33,7 @@ const Students = () => {
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const navigate = useNavigate();
   const selectedBranch = searchParams.get("branch");
 
@@ -53,8 +70,9 @@ const Students = () => {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (userId, userName) => {
-    if (!confirm(`Delete student "${userName}"? This action cannot be undone.`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { id: userId, full_name: userName } = deleteTarget;
     setActionMsg({ type: "", text: "" });
     try {
       await deleteUser(userId);
@@ -62,34 +80,35 @@ const Students = () => {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
       setActionMsg({ type: "error", text: err.response?.data?.detail || "Failed to delete student." });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading…</span>
       </div>
     );
   }
 
-  if (error) {
-    return <div className="bg-red-50 p-4 rounded-md text-red-600 text-center">{error}</div>;
-  }
+  if (error) return <InlineAlert type="error">{error}</InlineAlert>;
 
   if (selectedBranch && !branchInfo) {
     return (
-      <div className="space-y-6">
-        <div className="page-header">
-          <span className="page-header-eyebrow">Students</span>
-          <h1 className="page-header-title">Branch not found</h1>
-          <p className="page-header-sub">The selected branch is invalid. Please choose a branch from the list.</p>
-          <div className="page-header-actions">
-            <button onClick={() => navigate("/admin/students")} className="btn-primary">
-              ← Back to branches
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          eyebrow="Students"
+          title="Branch not found"
+          subtitle="The selected branch is invalid. Please choose a branch from the list."
+          actions={
+            <Button variant="secondary" className="gap-1.5" onClick={() => navigate("/admin/students")}>
+              <ArrowLeft className="size-4" /> Back to branches
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -98,34 +117,32 @@ const Students = () => {
   if (!selectedBranch) {
     const totalStudents = users.length;
     return (
-      <div className="space-y-6">
-        <div className="page-header">
-          <span className="page-header-eyebrow">Students</span>
-          <h1 className="page-header-title">Browse by branch</h1>
-          <p className="page-header-sub">
-            Pick a branch to view enrolled students. {totalStudents} students on campus.
-          </p>
-          <div className="page-header-actions">
-            <Link to="/admin/users/create" className="btn-primary">
-              <span aria-hidden="true">+</span> Add New Student
-            </Link>
-          </div>
-        </div>
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          eyebrow="Students"
+          title="Browse by branch"
+          subtitle={`Pick a branch to view enrolled students. ${totalStudents} students on campus.`}
+          actions={
+            <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/users/create" />}>
+              <Plus className="size-4" /> Add new student
+            </Button>
+          }
+        />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {BRANCHES.map((b) => {
             const count = users.filter((u) => u.branch === b.code).length;
             return (
-              <Link
-                key={b.code}
-                to={`/admin/students?branch=${b.code}`}
-                className={`rounded-2xl border p-6 flex flex-col items-center gap-2 hover:-translate-y-1 transition shadow-sm ${b.cardTone}`}
-              >
-                <span className="text-4xl">{b.icon}</span>
-                <p className="text-lg font-bold">{b.code}</p>
-                <p className="text-sm opacity-80">{b.label.split(" - ")[1]}</p>
-                <p className="text-2xl font-bold mt-1">{count}</p>
-                <span className="pill pill-brand" style={{ marginTop: "0.4rem" }}>Students</span>
+              <Link key={b.code} to={`/admin/students?branch=${b.code}`}>
+                <Card className="flex flex-col items-center gap-1.5 p-6 text-center transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <GraduationCap className="size-5" />
+                  </span>
+                  <p className="mt-1 font-semibold text-foreground">{b.code}</p>
+                  <p className="text-xs text-muted-foreground">{b.label.split(" - ")[1]}</p>
+                  <p className="text-2xl font-bold tracking-tight text-foreground">{count}</p>
+                  <StatusBadge tone="brand">Students</StatusBadge>
+                </Card>
               </Link>
             );
           })}
@@ -136,128 +153,108 @@ const Students = () => {
 
   // Branch selected — show filtered student table
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">Students · {selectedBranch}</span>
-        <h1 className="page-header-title">{branchInfo?.label || selectedBranch} students</h1>
-        <p className="page-header-sub">
-          {filteredStudents.length} enrolled · {searchedStudents.length} shown
-        </p>
-        <div className="page-header-actions">
-          <Link to="/admin/users/create" className="btn-primary">
-            <span aria-hidden="true">+</span> Add New Student
-          </Link>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={`Students · ${selectedBranch}`}
+        title={`${branchInfo?.label || selectedBranch} students`}
+        subtitle={`${filteredStudents.length} enrolled · ${searchedStudents.length} shown`}
+        actions={
+          <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/users/create" />}>
+            <Plus className="size-4" /> Add new student
+          </Button>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{actionMsg.text}</span>
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
-      <div className="table-wrap">
-        <div className="table-toolbar">
-          <div className="table-toolbar-title">
-            <button
-              onClick={() => navigate("/admin/students")}
-              className="btn-ghost"
-              style={{ marginRight: "0.5rem" }}
-            >
-              ← Branches
-            </button>
-            <span style={{ color: "#a8a29e" }}>·</span>
-            <span className="pill pill-info" style={{ marginLeft: "0.4rem" }}>{selectedBranch}</span>
+      <Card className="gap-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/admin/students")}>
+              <ArrowLeft className="size-4" /> Branches
+            </Button>
+            <span className="text-muted-foreground">·</span>
+            <StatusBadge tone="info">{selectedBranch}</StatusBadge>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-              <span className="auth-field-icon" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </span>
-              <input
+          <div className="flex items-center gap-2">
+            <div className="relative w-64 max-w-full">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search name, roll, or email…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="h-9 pl-9"
               />
             </div>
-            <span className="table-toolbar-meta">{searchedStudents.length} of {filteredStudents.length}</span>
+            <span className="text-sm text-muted-foreground">{searchedStudents.length} of {filteredStudents.length}</span>
           </div>
         </div>
 
         {searchedStudents.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Roll number</th>
-                  <th>Email</th>
-                  <th>Branch</th>
-                  <th>Status</th>
-                  <th className="text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchedStudents.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="cell-name">
-                        <TableAvatar name={user.full_name} tone="brand" />
-                        <div className="cell-name-text">
-                          <span className="cell-name-primary">{user.full_name}</span>
-                          <span className="cell-name-secondary">Student</span>
-                        </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Student</TableHead>
+                <TableHead>Roll number</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Branch</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchedStudents.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <TableAvatar name={user.full_name} tone="brand" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{user.full_name}</span>
+                        <span className="text-xs text-muted-foreground">Student</span>
                       </div>
-                    </td>
-                    <td>
-                      <span className="cell-mono">{user.roll_number || "—"}</span>
-                    </td>
-                    <td style={{ color: "#57534e" }}>{user.email}</td>
-                    <td>
-                      <span className={`pill ${branchInfo?.tone || "pill-brand"}`}>
-                        {user.branch || "—"}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`pill ${user.is_active ? "pill-success" : "pill-muted"}`}>
-                        {user.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="cell-actions">
-                        <ActionButton
-                          title="Edit student"
-                          onClick={() => navigate(`/admin/users/${user.id}/edit`)}
-                        >
-                          <EditIcon />
-                        </ActionButton>
-                        <ActionButton
-                          tone="danger"
-                          title="Delete student"
-                          onClick={() => handleDelete(user.id, user.full_name)}
-                        >
-                          <TrashIcon />
-                        </ActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{user.roll_number || "—"}</code>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                  <TableCell>
+                    <StatusBadge tone={branchInfo?.tone || "brand"}>{user.branch || "—"}</StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={user.is_active ? "success" : "muted"}>{user.is_active ? "Active" : "Inactive"}</StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <ActionButton title="Edit student" onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
+                        <Pencil className="size-4" />
+                      </ActionButton>
+                      <ActionButton tone="danger" title="Delete student" onClick={() => setDeleteTarget(user)}>
+                        <Trash2 className="size-4" />
+                      </ActionButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <TableEmpty
-            icon="🎓"
             title={search ? "No matches" : "No students in this branch"}
             sub={search ? "Try a different search term." : "Add the first student to get started."}
           />
         )}
-      </div>
+      </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete student?"
+        description={deleteTarget ? `Delete student "${deleteTarget.full_name}"? This action cannot be undone.` : ""}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

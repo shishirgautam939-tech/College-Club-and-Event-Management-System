@@ -1,13 +1,29 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { getAllUsers, deleteUser } from "../../api/users";
-import { TableAvatar, ActionButton, EditIcon, TrashIcon, TableEmpty } from "../../components/TableBits";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const ROLE_META = {
-  Students: { tone: "brand", pill: "pill-info", label: "Student", icon: "🎓" },
-  Faculty:  { tone: "violet", pill: "pill-violet", label: "Faculty", icon: "👨‍🏫" },
-  Staff:    { tone: "amber", pill: "pill-warn", label: "Staff", icon: "🛠️" },
-  Admins:   { tone: "accent", pill: "pill-accent", label: "Admin", icon: "🛡️" },
+  Students: { tone: "brand", label: "Student" },
+  Faculty:  { tone: "violet", label: "Faculty" },
+  Staff:    { tone: "warning", label: "Staff" },
+  Admins:   { tone: "accent", label: "Admin" },
 };
 
 const Users = () => {
@@ -16,12 +32,13 @@ const Users = () => {
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [search, setSearch] = useState("");
-  const location = useLocation();
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsers();
-  }, [location.search]);
+  }, [searchParams]);
 
   const fetchUsers = async () => {
     try {
@@ -35,8 +52,9 @@ const Users = () => {
     }
   };
 
-  const handleDelete = async (userId, userName) => {
-    if (!confirm(`Delete user "${userName}"? This action cannot be undone.`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { id: userId, full_name: userName } = deleteTarget;
     setActionMsg({ type: "", text: "" });
     try {
       await deleteUser(userId);
@@ -47,43 +65,39 @@ const Users = () => {
         type: "error",
         text: err.response?.data?.detail || "Failed to delete user.",
       });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading…</span>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="bg-red-50 p-4 rounded-md text-red-600 text-center">
-        {error}
-      </div>
-    );
-  }
+  if (error) return <InlineAlert type="error">{error}</InlineAlert>;
 
   // Get filter from URL
-  const queryParams = new URL(window.location.href).searchParams;
-  const filterType = queryParams.get("type");
+  const filterType = searchParams.get("type");
 
   // Create groups for each user type
   const allGroups = {
-      Students: users.filter(u => u.user_type === 'Student'),
-      Faculty: users.filter(u => u.user_type === 'Faculty'),
-      Staff: users.filter(u => u.user_type === 'Staff'),
-      Admins: users.filter(u => u.user_type === 'Admin'),
+    Students: users.filter((u) => u.user_type === "Student"),
+    Faculty: users.filter((u) => u.user_type === "Faculty"),
+    Staff: users.filter((u) => u.user_type === "Staff"),
+    Admins: users.filter((u) => u.user_type === "Admin"),
   };
 
   // Determine which groups to show
   let userGroups = allGroups;
-  if (filterType === 'Student') userGroups = { Students: allGroups.Students };
-  else if (filterType === 'Faculty') userGroups = { Faculty: allGroups.Faculty };
-  else if (filterType === 'Staff') userGroups = { Staff: allGroups.Staff };
-  else if (filterType === 'Admin') userGroups = { Admins: allGroups.Admins };
+  if (filterType === "Student") userGroups = { Students: allGroups.Students };
+  else if (filterType === "Faculty") userGroups = { Faculty: allGroups.Faculty };
+  else if (filterType === "Staff") userGroups = { Staff: allGroups.Staff };
+  else if (filterType === "Admin") userGroups = { Admins: allGroups.Admins };
 
   const applySearch = (group) => {
     if (!search.trim()) return group;
@@ -104,156 +118,130 @@ const Users = () => {
   const totalAll = users.length;
 
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">User Management</span>
-        <h1 className="page-header-title">
-          {filterType ? `${filterType} management` : "All users"}
-        </h1>
-        <p className="page-header-sub">
-          {totalShown} of {totalAll} users shown
-        </p>
-        <div className="page-header-actions">
-          <Link to="/admin/users/create" className="btn-primary">
-            <span aria-hidden="true">+</span> Add New User
-          </Link>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow="User management"
+        title={filterType ? `${filterType} management` : "All users"}
+        subtitle={`${totalShown} of ${totalAll} users shown`}
+        actions={
+          <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/users/create" />}>
+            <Plus className="size-4" /> Add new user
+          </Button>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{actionMsg.text}</span>
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
-      <div className="table-wrap">
-        <div className="table-toolbar">
-          <div className="table-toolbar-title">
-            <span>All users</span>
-            <span className="table-toolbar-meta">· search across roles</span>
-          </div>
-          <div className="auth-field-input" style={{ width: "20rem", maxWidth: "100%" }}>
-            <span className="auth-field-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </span>
-            <input
+      <Card className="gap-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">
+            All users <span className="font-normal text-muted-foreground">· search across roles</span>
+          </span>
+          <div className="relative w-80 max-w-full">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               type="text"
               placeholder="Search by name, roll, email, branch…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-9"
             />
           </div>
         </div>
 
         {Object.keys(userGroups).length === 0 ? (
-          <TableEmpty icon="👥" title="No users found" sub="Try a different search." />
+          <TableEmpty title="No users found" sub="Try a different search." />
         ) : (
-          <div className="dashboard-panel-body">
+          <div className="p-4">
             {Object.entries(userGroups).map(([groupName, groupUsers]) => {
               const visible = applySearch(groupUsers);
               const meta = ROLE_META[groupName] || ROLE_META.Students;
               return (
-                <section key={groupName} className="p-4">
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.6rem",
-                      marginBottom: "0.75rem",
-                    }}
-                  >
-                    <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#1c1917" }}>
-                      <span style={{ marginRight: "0.4rem" }}>{meta.icon}</span>
-                      {groupName}
-                    </h3>
-                    <span className={`pill ${meta.pill}`}>{visible.length}</span>
+                <section key={groupName} className="mb-6 last:mb-0">
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <h3 className="text-sm font-semibold text-foreground">{groupName}</h3>
+                    <StatusBadge tone={meta.tone}>{visible.length}</StatusBadge>
                   </div>
                   {visible.length > 0 ? (
-                    <div className="overflow-x-auto border border-stone-200 rounded-xl">
-                      <table className="dashboard-table">
-                        <thead>
-                          <tr>
-                            <th>Name</th>
-                            {groupName === "Students" && <th>Roll Number</th>}
-                            {groupName === "Students" && <th>Branch</th>}
-                            {groupName === "Faculty" && <th>Department</th>}
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th className="text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <div className="overflow-x-auto rounded-xl border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            {groupName === "Students" && <TableHead>Roll Number</TableHead>}
+                            {groupName === "Students" && <TableHead>Branch</TableHead>}
+                            {groupName === "Faculty" && <TableHead>Department</TableHead>}
+                            <TableHead>Email</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {visible.map((user) => (
-                            <tr key={user.id}>
-                              <td>
-                                <div className="cell-name">
+                            <TableRow key={user.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2.5">
                                   <TableAvatar name={user.full_name} tone={meta.tone} />
-                                  <div className="cell-name-text">
-                                    <span className="cell-name-primary">{user.full_name}</span>
-                                    <span className="cell-name-secondary">{meta.label}</span>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">{user.full_name}</span>
+                                    <span className="text-xs text-muted-foreground">{meta.label}</span>
                                   </div>
                                 </div>
-                              </td>
+                              </TableCell>
                               {groupName === "Students" && (
-                                <td>
-                                  <span className="cell-mono">{user.roll_number || "—"}</span>
-                                </td>
+                                <TableCell>
+                                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{user.roll_number || "—"}</code>
+                                </TableCell>
                               )}
                               {groupName === "Students" && (
-                                <td>
-                                  <span className="pill pill-info">{user.branch || "—"}</span>
-                                </td>
+                                <TableCell>
+                                  <StatusBadge tone="info">{user.branch || "—"}</StatusBadge>
+                                </TableCell>
                               )}
                               {groupName === "Faculty" && (
-                                <td>
-                                  <span className="pill pill-violet">
-                                    {user.department_name || "—"}
-                                  </span>
-                                </td>
+                                <TableCell>
+                                  <StatusBadge tone="violet">{user.department_name || "—"}</StatusBadge>
+                                </TableCell>
                               )}
-                              <td style={{ color: "#57534e" }}>{user.email}</td>
-                              <td>
-                                <span className={`pill ${user.is_active ? "pill-success" : "pill-muted"}`}>
+                              <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                              <TableCell>
+                                <StatusBadge tone={user.is_active ? "success" : "muted"}>
                                   {user.is_active ? "Active" : "Inactive"}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="cell-actions">
-                                  <ActionButton
-                                    title="Edit user"
-                                    onClick={() => navigate(`/admin/users/${user.id}/edit`)}
-                                  >
-                                    <EditIcon />
+                                </StatusBadge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex justify-end gap-1">
+                                  <ActionButton title="Edit user" onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
+                                    <Pencil className="size-4" />
                                   </ActionButton>
-                                  <ActionButton
-                                    tone="danger"
-                                    title="Delete user"
-                                    onClick={() => handleDelete(user.id, user.full_name)}
-                                  >
-                                    <TrashIcon />
+                                  <ActionButton tone="danger" title="Delete user" onClick={() => setDeleteTarget(user)}>
+                                    <Trash2 className="size-4" />
                                   </ActionButton>
                                 </div>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   ) : (
-                    <p style={{ fontSize: "0.85rem", color: "#a8a29e", fontStyle: "italic" }}>
-                      No matches in this group.
-                    </p>
+                    <p className="text-sm text-muted-foreground italic">No matches in this group.</p>
                   )}
                 </section>
               );
             })}
           </div>
         )}
-      </div>
+      </Card>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete user?"
+        description={deleteTarget ? `Delete user "${deleteTarget.full_name}"? This action cannot be undone.` : ""}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

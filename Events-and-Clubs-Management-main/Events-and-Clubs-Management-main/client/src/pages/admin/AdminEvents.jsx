@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Check, ClipboardCheck, Eye, Loader2, Search, X } from "lucide-react";
 import {
   getFacultyProposedEvents,
   reviewEvent,
@@ -7,13 +8,37 @@ import {
   completeEvent,
 } from "../../api/events";
 import { formatDate, formatDateTime } from "../../utils/formatDate";
-import { TableAvatar, ActionButton, CheckIcon, XIcon, EyeIcon, AttendanceIcon, TableEmpty } from "../../components/TableBits";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const STATUS_PILL = {
-  Proposed: "pill-warn",
-  Approved: "pill-info",
-  Rejected: "pill-danger",
-  Completed: "pill-success",
+const STATUS_TONE = {
+  Proposed: "warning",
+  Approved: "info",
+  Rejected: "danger",
+  Completed: "success",
 };
 
 const AdminEvents = () => {
@@ -41,11 +66,16 @@ const AdminEvents = () => {
 
   useEffect(() => {
     fetchData();
+    // Load the approved list up front too — the header count and tab badge
+    // read from it, and lazily fetching it only when the Approved tab was
+    // opened made the page report "0 approved" on first load.
+    fetchApprovedEvents();
   }, []);
 
   useEffect(() => {
     if (tab === "all") fetchAllEvents();
     if (tab === "approved") fetchApprovedEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, statusFilter]);
 
   const fetchData = async () => {
@@ -119,312 +149,233 @@ const AdminEvents = () => {
     );
   };
 
-  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading…</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">Events</span>
-        <h1 className="page-header-title">Event management</h1>
-        <p className="page-header-sub">
-          {pendingEvents.length} pending · {approvedEvents.length} approved · review proposals and run events end to end.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow="Events"
+        title="Event management"
+        subtitle={`${pendingEvents.length} pending · ${approvedEvents.length} approved · review proposals and run events end to end.`}
+      />
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-gray-200 pb-1 flex-wrap">
-        <button
-          onClick={() => switchTab("pending")}
-          className={`tab-btn ${tab === "pending" ? "tab-btn-active" : ""}`}
-        >
-          <span aria-hidden="true">⏳</span> Pending review
-          <span
-            className="pill"
-            style={{
-              background: tab === "pending" ? "rgba(255,255,255,0.25)" : "var(--color-cream-100)",
-              color: tab === "pending" ? "white" : "var(--color-ink-700)",
-              borderColor: "transparent",
-              padding: "0.1rem 0.5rem",
-            }}
-          >
-            {pendingEvents.length}
-          </span>
-        </button>
-        <button
-          onClick={() => switchTab("approved")}
-          className={`tab-btn ${tab === "approved" ? "tab-btn-active" : ""}`}
-        >
-          <span aria-hidden="true">✅</span> Approved
-        </button>
-        <button
-          onClick={() => switchTab("all")}
-          className={`tab-btn ${tab === "all" ? "tab-btn-active" : ""}`}
-        >
-          <span aria-hidden="true">📅</span> All events
-        </button>
-      </div>
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
+      {actionSuccess && <InlineAlert type="success">{actionSuccess}</InlineAlert>}
+      {actionError && <InlineAlert type="error">{actionError}</InlineAlert>}
 
-      {error && (
-        <div className="alert alert-error">
-          <span aria-hidden="true">⚠️</span><span>{error}</span>
-        </div>
-      )}
-      {actionSuccess && (
-        <div className="alert alert-success">
-          <span aria-hidden="true">✅</span><span>{actionSuccess}</span>
-        </div>
-      )}
-      {actionError && (
-        <div className="alert alert-error">
-          <span aria-hidden="true">⚠️</span><span>{actionError}</span>
-        </div>
-      )}
+      <Tabs value={tab} onValueChange={switchTab}>
+        <TabsList>
+          <TabsTrigger value="pending" className="gap-1.5">
+            Pending review
+            <StatusBadge tone="muted">{pendingEvents.length}</StatusBadge>
+          </TabsTrigger>
+          <TabsTrigger value="approved">Approved</TabsTrigger>
+          <TabsTrigger value="all">All events</TabsTrigger>
+        </TabsList>
 
-      {/* ─── Pending Review Tab ─── */}
-      {tab === "pending" && (
-        <div className="space-y-4">
+        {/* Pending review */}
+        <TabsContent value="pending" className="mt-4 flex flex-col gap-4">
           {pendingEvents.length === 0 ? (
-            <div className="table-wrap">
-              <TableEmpty icon="📭" title="No pending proposals" sub="You're all caught up — every event proposal has been reviewed." />
-            </div>
+            <Card className="p-0">
+              <TableEmpty title="No pending proposals" sub="You're all caught up — every event proposal has been reviewed." />
+            </Card>
           ) : (
             pendingEvents.map((ev) => (
-              <div
-                key={ev.id}
-                className="card"
-                style={{ padding: "1.25rem 1.5rem" }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start", minWidth: 0, flex: 1 }}>
-                    <TableAvatar name={ev.title} tone="amber" />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
-                        <h3 style={{ fontSize: "1.05rem", fontWeight: 600, color: "#1c1917" }}>
-                          {ev.title}
-                        </h3>
-                        <span className="pill pill-warn">{ev.status}</span>
-                      </div>
-                      <p style={{ fontSize: "0.85rem", color: "#57534e", marginTop: "0.25rem" }}>
-                        <strong>Club:</strong> {ev.club_name} &nbsp;·&nbsp;
-                        <strong>Proposed by:</strong> {ev.created_by_name} &nbsp;·&nbsp;
-                        <strong>Date:</strong> {formatDate(ev.event_date)}
-                      </p>
-                      {ev.description && (
-                        <p style={{ fontSize: "0.875rem", color: "#44403c", marginTop: "0.6rem", lineHeight: 1.5 }}>
-                          {ev.description}
-                        </p>
-                      )}
+              <Card key={ev.id} className="p-6">
+                <div className="flex items-start gap-4">
+                  <TableAvatar name={ev.title} tone="amber" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold text-foreground">{ev.title}</h3>
+                      <StatusBadge tone="warning">{ev.status}</StatusBadge>
                     </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      <strong className="font-medium text-foreground">Club:</strong> {ev.club_name} &nbsp;·&nbsp;
+                      <strong className="font-medium text-foreground">Proposed by:</strong> {ev.created_by_name} &nbsp;·&nbsp;
+                      <strong className="font-medium text-foreground">Date:</strong> {formatDate(ev.event_date)}
+                    </p>
+                    {ev.description && <p className="mt-2 text-sm text-muted-foreground">{ev.description}</p>}
                   </div>
                 </div>
 
                 {reviewingId === ev.id ? (
-                  <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f4" }}>
-                    <div className="auth-field">
-                      <label className="auth-field-label">
-                        <span>Remarks (optional)</span>
-                      </label>
-                      <textarea
+                  <div className="mt-4 flex flex-col gap-3 border-t pt-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Remarks (optional)</Label>
+                      <Textarea
                         value={remarks}
                         onChange={(e) => setRemarks(e.target.value)}
                         rows={2}
-                        className="input-field"
                         placeholder="Add remarks for the faculty…"
                       />
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
-                      <button
-                        onClick={() => handleReview(ev.id, "Approved")}
-                        className="btn-primary"
-                        style={{ background: "linear-gradient(135deg, #047857, #065f46)" }}
-                      >
-                        <CheckIcon /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleReview(ev.id, "Rejected")}
-                        className="btn-primary"
-                        style={{ background: "linear-gradient(135deg, #b91c1c, #991b1b)" }}
-                      >
-                        <XIcon /> Reject
-                      </button>
-                      <button
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => handleReview(ev.id, "Approved")} className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                        <Check className="size-4" /> Approve
+                      </Button>
+                      <Button onClick={() => handleReview(ev.id, "Rejected")} variant="destructive" className="gap-1.5">
+                        <X className="size-4" /> Reject
+                      </Button>
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setReviewingId(null);
                           setRemarks("");
                         }}
-                        className="btn-secondary"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ marginTop: "0.85rem", display: "flex", gap: "0.5rem" }}>
-                    <button
-                      onClick={() => setReviewingId(ev.id)}
-                      className="btn-primary"
-                    >
-                      <EyeIcon /> Review
-                    </button>
-                    <button
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={() => setReviewingId(ev.id)} className="gap-1.5">
+                      <Eye className="size-4" /> Review
+                    </Button>
+                    <Button
                       onClick={() => handleReview(ev.id, "Approved")}
-                      className="btn-secondary"
-                      style={{ color: "#047857" }}
+                      variant="outline"
+                      className="gap-1.5 text-emerald-700 hover:text-emerald-700"
                     >
-                      <CheckIcon /> Quick approve
-                    </button>
+                      <Check className="size-4" /> Quick approve
+                    </Button>
                   </div>
                 )}
-              </div>
+              </Card>
             ))
           )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* ─── Approved Events Tab ─── */}
-      {tab === "approved" && (
-        <div className="table-wrap">
-          <div className="table-toolbar">
-            <div className="table-toolbar-title">
-              <span>Approved & upcoming</span>
-              <span className="table-toolbar-meta">· {filterEvents(approvedEvents).length} of {approvedEvents.length}</span>
-            </div>
-            <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-              <span className="auth-field-icon" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                placeholder="Search title, club, venue…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-          {approvedEvents.length === 0 ? (
-            <TableEmpty icon="📅" title="No approved events" sub="Approve a pending proposal to see it here." />
-          ) : filterEvents(approvedEvents).length === 0 ? (
-            <TableEmpty icon="🔍" title="No matches" sub="Try a different search term." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Club</th>
-                    <th>Date</th>
-                    <th>Venue</th>
-                    <th>Created by</th>
-                    <th className="text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filterEvents(approvedEvents).map((ev) => (
-                    <tr key={ev.id}>
-                      <td>
-                        <div className="cell-name">
-                          <TableAvatar name={ev.title} tone="sky" />
-                          <div className="cell-name-text">
-                            <span className="cell-name-primary">{ev.title}</span>
-                            <span className="cell-name-secondary">Approved</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ color: "#57534e" }}>{ev.club_name}</td>
-                      <td style={{ color: "#57534e", fontSize: "0.875rem" }}>{formatDateTime(ev.event_date)}</td>
-                      <td style={{ color: "#57534e" }}>{ev.venue || "—"}</td>
-                      <td style={{ color: "#57534e" }}>{ev.created_by_name}</td>
-                      <td>
-                        <div className="cell-actions">
-                          <button
-                            onClick={() => handleComplete(ev.id)}
-                            className="chip chip-success"
-                            style={{ cursor: "pointer" }}
-                          >
-                            <CheckIcon /> Complete
-                          </button>
-                          <button
-                            onClick={() => navigate(`/admin/events/${ev.id}/attendance`)}
-                            className="chip"
-                            style={{
-                              background: "var(--color-brand-50)",
-                              color: "var(--color-brand-800)",
-                              border: "1px solid var(--color-brand-100)",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <AttendanceIcon /> Attendance
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── All Events Tab ─── */}
-      {tab === "all" && (
-        <div className="table-wrap">
-          <div className="table-toolbar">
-            <div className="table-toolbar-title">
-              <span>All events</span>
-              <span className="table-toolbar-meta">· {filterEvents(allEvents).length} of {allEvents.length}</span>
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input-field"
-                style={{ width: "10rem" }}
-              >
-                <option value="">All statuses</option>
-                <option value="Proposed">Proposed</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Completed">Completed</option>
-              </select>
-              <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-                <span className="auth-field-icon" aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
+        {/* Approved */}
+        <TabsContent value="approved" className="mt-4">
+          <Card className="gap-0 p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                Approved &amp; upcoming{" "}
+                <span className="font-normal text-muted-foreground">
+                  · {filterEvents(approvedEvents).length} of {approvedEvents.length}
                 </span>
-                <input
+              </span>
+              <div className="relative w-64 max-w-full">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
                   type="text"
                   placeholder="Search title, club, venue…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  className="h-9 pl-9"
                 />
               </div>
             </div>
-          </div>
+            {approvedEvents.length === 0 ? (
+              <TableEmpty title="No approved events" sub="Approve a pending proposal to see it here." />
+            ) : filterEvents(approvedEvents).length === 0 ? (
+              <TableEmpty title="No matches" sub="Try a different search term." />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Club</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Venue</TableHead>
+                    <TableHead>Created by</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filterEvents(approvedEvents).map((ev) => (
+                    <TableRow key={ev.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <TableAvatar name={ev.title} tone="sky" />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{ev.title}</span>
+                            <span className="text-xs text-muted-foreground">Approved</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{ev.club_name}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDateTime(ev.event_date)}</TableCell>
+                      <TableCell className="text-muted-foreground">{ev.venue || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{ev.created_by_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={() => handleComplete(ev.id)}>
+                            <Check className="size-3.5" /> Complete
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/admin/events/${ev.id}/attendance`)}>
+                            <ClipboardCheck className="size-3.5" /> Attendance
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </TabsContent>
 
-          {allEvents.length === 0 ? (
-            <TableEmpty icon="📅" title="No events found" sub="Try a different filter." />
-          ) : filterEvents(allEvents).length === 0 ? (
-            <TableEmpty icon="🔍" title="No matches" sub="Try a different search or filter." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Club</th>
-                    <th>Date</th>
-                    <th>Created by</th>
-                    <th>Status</th>
-                    <th className="text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+        {/* All events */}
+        <TabsContent value="all" className="mt-4">
+          <Card className="gap-0 p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                All events <span className="font-normal text-muted-foreground">· {filterEvents(allEvents).length} of {allEvents.length}</span>
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value === "__all__" ? "" : value)}>
+                  <SelectTrigger className="h-9 w-40">
+                    <SelectValue placeholder="All statuses">
+                      {() => (statusFilter || "All statuses")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All statuses</SelectItem>
+                    <SelectItem value="Proposed">Proposed</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64 max-w-full">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search title, club, venue…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 pl-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {allEvents.length === 0 ? (
+              <TableEmpty title="No events found" sub="Try a different filter." />
+            ) : filterEvents(allEvents).length === 0 ? (
+              <TableEmpty title="No matches" sub="Try a different search or filter." />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Club</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Created by</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filterEvents(allEvents).map((ev) => {
                     const tone =
                       ev.status === "Approved" ? "sky"
@@ -432,78 +383,50 @@ const AdminEvents = () => {
                       : ev.status === "Rejected" ? "muted"
                       : "amber";
                     return (
-                      <tr key={ev.id}>
-                        <td>
-                          <div className="cell-name">
+                      <TableRow key={ev.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
                             <TableAvatar name={ev.title} tone={tone} />
-                            <div className="cell-name-text">
-                              <span className="cell-name-primary">{ev.title}</span>
-                              <span className="cell-name-secondary">{ev.venue || "Venue TBA"}</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{ev.title}</span>
+                              <span className="text-xs text-muted-foreground">{ev.venue || "Venue TBA"}</span>
                             </div>
                           </div>
-                        </td>
-                        <td style={{ color: "#57534e" }}>{ev.club_name}</td>
-                        <td style={{ color: "#57534e", fontSize: "0.875rem" }}>{formatDateTime(ev.event_date)}</td>
-                        <td style={{ color: "#57534e" }}>{ev.created_by_name}</td>
-                        <td>
-                          <span className={`pill ${STATUS_PILL[ev.status] || "pill-muted"}`}>
-                            {ev.status}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="cell-actions">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{ev.club_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDateTime(ev.event_date)}</TableCell>
+                        <TableCell className="text-muted-foreground">{ev.created_by_name}</TableCell>
+                        <TableCell>
+                          <StatusBadge tone={STATUS_TONE[ev.status] || "muted"}>{ev.status}</StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
                             {ev.status === "Approved" && (
                               <>
-                                <button
-                                  onClick={() => handleComplete(ev.id)}
-                                  className="chip chip-success"
-                                  style={{ cursor: "pointer" }}
-                                >
-                                  <CheckIcon /> Complete
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    navigate(`/admin/events/${ev.id}/attendance`)
-                                  }
-                                  className="chip"
-                                  style={{
-                                    background: "var(--color-brand-50)",
-                                    color: "var(--color-brand-800)",
-                                    border: "1px solid var(--color-brand-100)",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  <AttendanceIcon /> Attendance
-                                </button>
+                                <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={() => handleComplete(ev.id)}>
+                                  <Check className="size-3.5" /> Complete
+                                </Button>
+                                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/admin/events/${ev.id}/attendance`)}>
+                                  <ClipboardCheck className="size-3.5" /> Attendance
+                                </Button>
                               </>
                             )}
                             {ev.status === "Completed" && (
-                              <button
-                                onClick={() =>
-                                  navigate(`/admin/events/${ev.id}/attendance`)
-                                }
-                                className="chip"
-                                style={{
-                                  background: "var(--color-brand-50)",
-                                  color: "var(--color-brand-800)",
-                                  border: "1px solid var(--color-brand-100)",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                <EyeIcon /> View attendance
-                              </button>
+                              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/admin/events/${ev.id}/attendance`)}>
+                                <Eye className="size-3.5" /> View attendance
+                              </Button>
                             )}
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

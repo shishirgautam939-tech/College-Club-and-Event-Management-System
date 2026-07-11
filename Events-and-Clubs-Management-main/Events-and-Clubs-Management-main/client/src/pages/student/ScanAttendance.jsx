@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
+import { CameraIcon, CheckCircle2 } from "lucide-react";
 import { verifyQRAttendance } from "../../api/participation";
+import PageHeader from "@/components/PageHeader";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const parseQrPayload = (decodedText) => {
   // decodedText may be a string OR an object (Html5Qrcode.scanFileV2 returns an object).
@@ -215,24 +221,18 @@ const ScanAttendance = () => {
   };
 
   return (
-    <div className="page-shell max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="page-title">Check in with QR</h1>
-        <p className="page-subtitle">
-          Point your camera at the QR code displayed at the event venue. Make sure
-          you&apos;re registered before scanning.
-        </p>
-      </div>
+    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+      <PageHeader
+        eyebrow={<><CameraIcon className="size-3.5" /> Attendance</>}
+        title="Check in with QR"
+        subtitle="Point your camera at the QR code displayed at the event venue. Make sure you're registered before scanning."
+      />
 
-      {message.text && (
-        <div className={`alert ${message.type === "success" ? "alert-success" : "alert-error"}`}>
-          {message.text}
-        </div>
-      )}
+      {message.text && <InlineAlert type={message.type || "error"}>{message.text}</InlineAlert>}
 
       {scanning ? (
-        <div className="card p-6">
-          <div id="qr-reader" className="rounded-xl overflow-hidden" />
+        <Card className="p-6">
+          <div id="qr-reader" className="overflow-hidden rounded-xl" />
 
           {/* Hidden host for the Html5Qrcode instance used to decode uploaded
               images. The library requires a real DOM element with the id it
@@ -250,57 +250,58 @@ const ScanAttendance = () => {
               className="hidden"
               aria-label="Upload QR code image"
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
-              className="btn-secondary w-full"
+              className="w-full"
             >
-              {isProcessing ? "Processing..." : "Scan from Image File"}
-            </button>
-            <p className="text-xs text-stone-500 text-center">
-              Or select a QR code image from your device
-            </p>
+              {isProcessing ? "Processing..." : "Scan from image file"}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">Or select a QR code image from your device</p>
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="card p-6 text-center space-y-4">
-          <div className="text-5xl">✓</div>
-          <p className="text-stone-600">You&apos;re checked in. Enjoy the event!</p>
-          <button type="button" onClick={restartScanner} className="btn-secondary">
+        <Card className="flex flex-col items-center gap-4 p-6 text-center">
+          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <CheckCircle2 className="size-8" />
+          </div>
+          <p className="font-semibold text-foreground">You&apos;re checked in. Enjoy the event!</p>
+          <Button type="button" variant="outline" onClick={restartScanner}>
             Scan another code
-          </button>
-        </div>
+          </Button>
+        </Card>
       )}
 
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-stone-800 mb-2">Having trouble?</h2>
-        <p className="text-sm text-stone-500 mb-4">
+      <Card className="p-6">
+        <h2 className="mb-1 text-base font-semibold text-foreground">Having trouble?</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
           Enter the event ID and token manually if the camera isn&apos;t working.
         </p>
-        <form onSubmit={handleManualSubmit} className="space-y-3">
-          <input
+        <form onSubmit={handleManualSubmit} className="flex flex-col gap-3">
+          <Input
             type="number"
             placeholder="Event ID"
             value={manualEventId}
             onChange={(e) => setManualEventId(e.target.value)}
             disabled={isProcessing}
-            className="input-field"
             min="1"
+            className="h-10"
           />
-          <input
+          <Input
             type="text"
             placeholder="Attendance token"
             value={manualToken}
             onChange={(e) => setManualToken(e.target.value)}
             disabled={isProcessing}
-            className="input-field"
+            className="h-10"
           />
-          <button type="submit" disabled={isProcessing} className="btn-primary w-full">
+          <Button type="submit" disabled={isProcessing} className="w-full">
             {isProcessing ? "Verifying..." : "Verify manually"}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

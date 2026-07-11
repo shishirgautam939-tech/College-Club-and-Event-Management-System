@@ -8,6 +8,8 @@ try:
 except ImportError:
     qrcode = None
 
+from django.utils import timezone
+
 from .models import Event, EventApproval
 from participation.utils import build_qr_payload, is_event_qr_active
 
@@ -38,6 +40,26 @@ class EventSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['created_by', 'status', 'created_at', 'organizer_type']
+
+    def validate_event_date(self, value):
+        """Reject events scheduled in the past.
+
+        Naive datetimes coming off a `<input type="datetime-local">` are
+        interpreted as the project's local time (Django's default
+        ``USE_TZ`` behaviour on this project). We compare against
+        ``timezone.now()`` so we don't reject events that are merely an
+        hour or two away in a different timezone.
+        """
+        if value is None:
+            return value
+        # If a naive datetime is sent, treat it as the project's local time.
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        if value < timezone.now():
+            raise serializers.ValidationError(
+                "Event date must be in the future. Please pick a later date and time."
+            )
+        return value
 
 
 class EventDiscoverySerializer(serializers.ModelSerializer):

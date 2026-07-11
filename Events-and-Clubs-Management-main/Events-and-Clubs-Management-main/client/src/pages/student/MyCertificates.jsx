@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
+import { Award, GraduationCap, Loader2 } from "lucide-react";
 import { getMyCertificates, downloadCertificate } from "../../api/participation";
 import { saveBlobAsFile } from "../../utils/downloadFile";
 import { formatDateTime } from "../../utils/formatDate";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const MyCertificates = () => {
   const [certificates, setCertificates] = useState([]);
@@ -49,128 +62,106 @@ const MyCertificates = () => {
     setQrPreview({ open: false, certificate: null });
   };
 
-  if (loading) return <p className="text-stone-500">Loading certificates...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading certificates…</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="page-shell space-y-6">
-      <div className="space-y-2">
-        <h1 className="page-title">My Certificates</h1>
-        <p className="page-subtitle">
-          Download your participation certificates and view event completion details.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={<><Award className="size-3.5" /> Achievements</>}
+        title="My certificates"
+        subtitle="Download your participation certificates and view event completion details."
+      />
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
 
       {certificates.length === 0 ? (
-        <div className="card p-10 text-center border border-stone-200 bg-gradient-to-br from-white to-cream-50 shadow-sm">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-stone-200 bg-brand-50 text-brand-800">
-            🎓
+        <Card className="p-10 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <GraduationCap className="size-7" />
           </div>
-          <p className="text-stone-700 font-semibold">No certificates yet.</p>
-          <p className="text-stone-500 mt-2">
-            They appear here after you complete an event.
-          </p>
-        </div>
+          <p className="font-semibold text-foreground">No certificates yet.</p>
+          <p className="mt-2 text-sm text-muted-foreground">They appear here after you complete an event.</p>
+        </Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
           {certificates.map((cert) => (
-            <div
-              key={cert.id}
-              className="card p-6 flex flex-col gap-4 border border-stone-200 bg-white shadow-sm"
-            >
+            <Card key={cert.id} className="gap-4 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="badge badge-success">Ready to download</span>
-                  <h3 className="mt-3 text-xl font-semibold text-stone-900 break-words">
-                    {cert.event_title}
-                  </h3>
-                  <p className="text-sm text-brand-700">{cert.club_name}</p>
-                  <p className="text-sm text-stone-500 mt-1">
-                    Issued {formatDateTime(cert.issued_at)}
-                  </p>
+                  <StatusBadge tone="success">Ready to download</StatusBadge>
+                  <h3 className="mt-3 text-lg font-semibold break-words text-foreground">{cert.event_title}</h3>
+                  <p className="text-sm text-primary">{cert.club_name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Issued {formatDateTime(cert.issued_at)}</p>
                 </div>
-                <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-sm font-semibold text-brand-800">
+                <div className="hidden size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-semibold text-primary sm:flex">
                   PDF
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-stone-200 bg-cream-50 p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
+              <div className="rounded-xl border bg-muted/40 p-4">
+                <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">
                   Certificate details
                 </p>
-                <p className="mt-3 text-sm text-stone-600">
-                  Student: <span className="font-medium text-stone-800">{cert.user_name}</span>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Student: <span className="font-medium text-foreground">{cert.user_name}</span>
                 </p>
-                <p className="text-sm text-stone-600">
-                  Reference: <span className="font-medium text-stone-800 break-all">{cert.certificate_code}</span>
+                <p className="text-sm text-muted-foreground">
+                  Reference: <span className="font-medium break-all text-foreground">{cert.certificate_code}</span>
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3 mt-auto">
-                <button
-                  type="button"
-                  onClick={() => openQrPreview(cert)}
-                  disabled={!cert.qr_image_base64}
-                  className="btn-secondary"
-                >
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => openQrPreview(cert)} disabled={!cert.qr_image_base64}>
                   View QR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownload(cert)}
-                  disabled={downloadingId === cert.id}
-                  className="btn-primary"
-                >
+                </Button>
+                <Button type="button" onClick={() => handleDownload(cert)} disabled={downloadingId === cert.id}>
                   {downloadingId === cert.id ? "Preparing..." : "Download PDF"}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
-      {qrPreview.open && qrPreview.certificate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                  Certificate QR
-                </p>
-                <h3 className="mt-2 text-lg font-semibold text-stone-800">
-                  {qrPreview.certificate.event_title}
-                </h3>
-                <p className="text-sm text-stone-500">
-                  Scan this QR to open the certificate download page.
-                </p>
-              </div>
-              <button type="button" onClick={closeQrPreview} className="btn-secondary">
-                Close
-              </button>
-            </div>
+      <Dialog open={qrPreview.open} onOpenChange={(open) => !open && closeQrPreview()}>
+        <DialogContent className="sm:max-w-lg">
+          {qrPreview.certificate && (
+            <>
+              <DialogHeader>
+                <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">Certificate QR</p>
+                <DialogTitle>{qrPreview.certificate.event_title}</DialogTitle>
+                <DialogDescription>Scan this QR to open the certificate download page.</DialogDescription>
+              </DialogHeader>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-              <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-                <img
-                  src={`data:image/png;base64,${qrPreview.certificate.qr_image_base64}`}
-                  alt="Certificate QR code"
-                  className="mx-auto h-64 w-64 rounded-2xl border border-stone-200 bg-white p-3"
-                />
+              <div className="flex flex-col gap-4">
+                <div className="rounded-xl border bg-muted/40 p-4">
+                  <img
+                    src={`data:image/png;base64,${qrPreview.certificate.qr_image_base64}`}
+                    alt="Certificate QR code"
+                    className="mx-auto h-64 w-64 rounded-xl border bg-white p-3"
+                  />
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-sm font-medium text-foreground">Download URL</p>
+                  <p className="mt-2 text-sm break-all text-muted-foreground">
+                    {qrPreview.certificate.download_url}
+                  </p>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Keep this QR handy if you want to open the certificate on another device.
+                  </p>
+                </div>
               </div>
-              <div className="rounded-3xl border border-stone-200 bg-white p-5">
-                <p className="text-sm font-medium text-stone-800">Download URL</p>
-                <p className="mt-2 break-all text-sm text-stone-500">
-                  {qrPreview.certificate.download_url}
-                </p>
-                <p className="mt-4 text-sm text-stone-500">
-                  Keep this QR handy if you want to open the certificate on another device.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

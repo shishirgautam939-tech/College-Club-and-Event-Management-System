@@ -6,10 +6,25 @@ from .models import User
 
 import re
 
+# A stricter email regex. The local part is 1-64 chars from the
+# standard set. The domain is a sequence of dot-separated labels
+# (1-63 chars each) and ends in `.com` or `.edu`. The TLD is
+# anchored separately so it cannot be greedily absorbed into the
+# previous label.
 EMAIL_DOMAIN_PATTERN = re.compile(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com|edu)$',
-    re.IGNORECASE,
+    r'^[A-Za-z0-9._%+\-]{1,64}@'
+    r'(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+'
+    r'(?:com|edu)$'
 )
+
+# Reject common typos by requiring realistic second-level lengths.
+# - .com providers like gmail.com need at least 5 chars before ".com"
+#   so typos like gmai.com do not pass.
+# - .edu school domains can be shorter, so nce.edu still works.
+MIN_SECOND_LEVEL_DOMAIN_LENGTHS = {
+    'com': 5,
+    'edu': 3,
+}
 
 
 def validate_email_domain(value):
@@ -17,6 +32,20 @@ def validate_email_domain(value):
     if not EMAIL_DOMAIN_PATTERN.match(email):
         raise serializers.ValidationError(
             'Enter a valid email address ending with .com or .edu (e.g. name@gmail.com or name@nce.edu).'
+        )
+    # Pull out the second-level domain (the label right before the
+    # TLD) and require it to be long enough for that TLD.
+    try:
+        domain_part = email.rsplit('@', 1)[1]
+        second_level, tld = domain_part.rsplit('.', 1)
+        second_level = second_level.split('.')[-1]
+    except (IndexError, ValueError):
+        raise serializers.ValidationError('Enter a valid email address.')
+    min_length = MIN_SECOND_LEVEL_DOMAIN_LENGTHS.get(tld.lower())
+    if min_length and len(second_level) < min_length:
+        raise serializers.ValidationError(
+            'That email domain looks incomplete. Use a full provider '
+            'name like gmail.com, outlook.com, or your college\'s .edu address.'
         )
     return email
 

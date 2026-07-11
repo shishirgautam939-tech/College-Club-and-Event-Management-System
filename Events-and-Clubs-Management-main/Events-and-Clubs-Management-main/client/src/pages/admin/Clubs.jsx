@@ -1,16 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { getClubs, getClubMembers, addClubMember, removeClubMember } from "../../api/clubs";
 import { getAllUsers } from "../../api/users";
-import { TableAvatar, ActionButton, TrashIcon, TableEmpty } from "../../components/TableBits";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-const POSITION_PILL = {
-  President: "pill-accent",
-  "Vice President": "pill-violet",
-  Secretary: "pill-info",
-  Treasurer: "pill-warn",
-  "Event Manager": "pill-brand",
-  Member: "pill-muted",
+const POSITION_TONE = {
+  President: "accent",
+  "Vice President": "violet",
+  Secretary: "info",
+  Treasurer: "warning",
+  "Event Manager": "brand",
+  Member: "muted",
 };
 
 const Clubs = () => {
@@ -30,6 +54,7 @@ const Clubs = () => {
   const [newMemberUserId, setNewMemberUserId] = useState("");
   const [newMemberPosition, setNewMemberPosition] = useState("Member");
   const [addingMember, setAddingMember] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
     const fetchClubs = async () => {
@@ -128,8 +153,9 @@ const Clubs = () => {
     }
   };
 
-  const handleRemoveMember = async (memberId, memberName) => {
-    if (!confirm(`Remove ${memberName} from this club?`)) return;
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return;
+    const { id: memberId } = removeTarget;
     setActionMsg({ type: "", text: "" });
     try {
       await removeClubMember(selectedClubId, memberId);
@@ -140,277 +166,240 @@ const Clubs = () => {
         type: "error",
         text: err.response?.data?.detail || "Failed to remove member.",
       });
+    } finally {
+      setRemoveTarget(null);
     }
   };
 
-  if (loading) return <div className="p-4">Loading clubs...</div>;
-  if (error && clubs.length === 0) return <div className="p-4 text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading clubs…</span>
+      </div>
+    );
+  }
+  if (error && clubs.length === 0) return <InlineAlert type="error">{error}</InlineAlert>;
 
   return (
-    <div className="space-y-6">
-      <div className="page-header">
-        <span className="page-header-eyebrow">Clubs</span>
-        <h1 className="page-header-title">Club management</h1>
-        <p className="page-header-sub">
-          {clubs.length} clubs on campus · {selectedClub ? `${members.length} members in this club` : "Pick a club to manage its members."}
-        </p>
-        <div className="page-header-actions">
-          <Link to="/admin/clubs/create" className="btn-primary">
-            <span aria-hidden="true">+</span> Create Club
-          </Link>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow="Clubs"
+        title="Club management"
+        subtitle={`${clubs.length} clubs on campus · ${selectedClub ? `${members.length} members in this club` : "Pick a club to manage its members."}`}
+        actions={
+          <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/clubs/create" />}>
+            <Plus className="size-4" /> Create club
+          </Button>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <span aria-hidden="true">{actionMsg.type === "success" ? "✅" : "⚠️"}</span>
-          <span>{actionMsg.text}</span>
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
       {/* Club selector card */}
-      <div className="card p-5">
-        <label className="auth-field-label" style={{ marginBottom: "0.5rem" }}>
-          <span>Select a club</span>
-          {selectedClub && (
-            <span className="pill pill-accent">{selectedClub.is_council ? "Council" : "Club"}</span>
-          )}
-        </label>
-        <select
+      <Card className="p-5">
+        <div className="mb-2 flex items-center justify-between">
+          <Label>Select a club</Label>
+          {selectedClub && <StatusBadge tone="accent">{selectedClub.is_council ? "Council" : "Club"}</StatusBadge>}
+        </div>
+        <Select
           value={selectedClubId}
-          onChange={(e) => {
-            setSelectedClubId(e.target.value);
+          onValueChange={(value) => {
+            setSelectedClubId(value);
             setShowAddMember(false);
             setSearch("");
           }}
-          className="input-field"
-          style={{ maxWidth: "32rem" }}
         >
-          <option value="">— Choose a club —</option>
-          {clubs.map((club) => (
-            <option key={club.id} value={club.id}>
-              {club.club_name}
-              {club.is_council ? " (Council)" : ""}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="h-10 w-full max-w-lg">
+            <SelectValue placeholder="— Choose a club —">
+              {() => (selectedClub ? `${selectedClub.club_name}${selectedClub.is_council ? " (Council)" : ""}` : "— Choose a club —")}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {clubs.map((club) => (
+              <SelectItem key={club.id} value={String(club.id)}>
+                {club.club_name}
+                {club.is_council ? " (Council)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {selectedClub && (
-          <div
-            className="dashboard-panel"
-            style={{
-              marginTop: "1rem",
-              padding: 0,
-              border: "1px solid var(--color-cream-200)",
-            }}
-          >
-            <div className="dashboard-panel-body" style={{ padding: "1rem 1.25rem" }}>
-              <div style={{ display: "grid", gap: "0.6rem", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-                <div>
-                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
-                    Faculty Coordinator
-                  </p>
-                  <p style={{ marginTop: "0.2rem", color: "#1c1917", fontWeight: 500 }}>
-                    {selectedClub.faculty_coordinator_name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
-                    Type
-                  </p>
-                  <p style={{ marginTop: "0.2rem" }}>
-                    <span className={`pill ${selectedClub.is_council ? "pill-violet" : "pill-brand"}`}>
-                      {selectedClub.is_council ? "Council" : "Club"}
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
-                    Members
-                  </p>
-                  <p style={{ marginTop: "0.2rem", color: "#1c1917", fontWeight: 600 }}>
-                    {members.length}
-                  </p>
-                </div>
-                {selectedClub.description && (
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <p style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", fontWeight: 600 }}>
-                      About
-                    </p>
-                    <p style={{ marginTop: "0.2rem", color: "#57534e", fontSize: "0.875rem" }}>
-                      {selectedClub.description}
-                    </p>
-                  </div>
-                )}
+          <div className="mt-4 rounded-xl border p-4">
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Faculty Coordinator</p>
+                <p className="mt-0.5 font-medium text-foreground">{selectedClub.faculty_coordinator_name || "—"}</p>
               </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Type</p>
+                <p className="mt-0.5">
+                  <StatusBadge tone={selectedClub.is_council ? "violet" : "brand"}>
+                    {selectedClub.is_council ? "Council" : "Club"}
+                  </StatusBadge>
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Members</p>
+                <p className="mt-0.5 font-semibold text-foreground">{members.length}</p>
+              </div>
+              {selectedClub.description && (
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">About</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{selectedClub.description}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Members Table */}
-      <div className="table-wrap">
-        <div className="table-toolbar">
-          <div className="table-toolbar-title">
-            {selectedClub ? `${selectedClub.club_name} members` : "Club members"}
-            <span className="table-toolbar-meta">· {searchedMembers.length} of {members.length}</span>
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+      <Card className="gap-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">
+            {selectedClub ? `${selectedClub.club_name} members` : "Club members"}{" "}
+            <span className="font-normal text-muted-foreground">· {searchedMembers.length} of {members.length}</span>
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
             {selectedClubId && (
-              <div className="auth-field-input" style={{ width: "16rem", maxWidth: "100%" }}>
-                <span className="auth-field-icon" aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </span>
-                <input
+              <div className="relative w-64 max-w-full">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
                   type="text"
                   placeholder="Search members…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  className="h-9 pl-9"
                 />
               </div>
             )}
             {selectedClubId && (
-              <button
-                onClick={handleShowAddMember}
-                className="btn-primary"
-              >
-                <span aria-hidden="true">+</span> Add Member
-              </button>
+              <Button className="gap-1.5" onClick={handleShowAddMember}>
+                <Plus className="size-4" /> Add member
+              </Button>
             )}
           </div>
         </div>
 
         {/* Add Member Form */}
         {showAddMember && selectedClubId && (
-          <div
-            style={{
-              padding: "1rem 1.25rem",
-              background: "linear-gradient(90deg, var(--color-brand-50) 0%, transparent 100%)",
-              borderBottom: "1px solid #e7e5e4",
-              display: "flex",
-              gap: "0.75rem",
-              alignItems: "flex-end",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <label className="auth-field-label" style={{ marginBottom: "0.25rem" }}>
-                <span style={{ fontSize: "0.75rem" }}>Student</span>
-              </label>
-              <select
-                value={newMemberUserId}
-                onChange={(e) => setNewMemberUserId(e.target.value)}
-                className="input-field"
-                style={{ width: "16rem" }}
-              >
-                <option value="">Select a student…</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name} ({s.roll_number || s.email})
-                  </option>
-                ))}
-              </select>
+          <div className="flex flex-wrap items-end gap-3 border-b bg-primary/5 px-4 py-3">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Student</Label>
+              <Select value={newMemberUserId} onValueChange={setNewMemberUserId}>
+                <SelectTrigger className="h-9 w-64">
+                  <SelectValue placeholder="Select a student…">
+                    {() => {
+                      const s = students.find((st) => String(st.id) === newMemberUserId);
+                      return s ? `${s.full_name} (${s.roll_number || s.email})` : "Select a student…";
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.full_name} ({s.roll_number || s.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="auth-field-label" style={{ marginBottom: "0.25rem" }}>
-                <span style={{ fontSize: "0.75rem" }}>Position</span>
-              </label>
-              <select
-                value={newMemberPosition}
-                onChange={(e) => setNewMemberPosition(e.target.value)}
-                className="input-field"
-                style={{ width: "10rem" }}
-              >
-                <option value="Member">Member</option>
-                <option value="Event Manager">Event Manager</option>
-                <option value="President">President</option>
-                <option value="Vice President">Vice President</option>
-                <option value="Secretary">Secretary</option>
-                <option value="Treasurer">Treasurer</option>
-              </select>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Position</Label>
+              <Select value={newMemberPosition} onValueChange={setNewMemberPosition}>
+                <SelectTrigger className="h-9 w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Member">Member</SelectItem>
+                  <SelectItem value="Event Manager">Event Manager</SelectItem>
+                  <SelectItem value="President">President</SelectItem>
+                  <SelectItem value="Vice President">Vice President</SelectItem>
+                  <SelectItem value="Secretary">Secretary</SelectItem>
+                  <SelectItem value="Treasurer">Treasurer</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <button
-              onClick={handleAddMember}
-              disabled={addingMember || !newMemberUserId}
-              className="btn-primary"
-            >
+            <Button onClick={handleAddMember} disabled={addingMember || !newMemberUserId}>
               {addingMember ? "Adding…" : "Add"}
-            </button>
-            <button
-              onClick={() => setShowAddMember(false)}
-              className="btn-secondary"
-            >
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddMember(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         )}
 
         {!selectedClubId ? (
-          <TableEmpty icon="🏛️" title="No club selected" sub="Choose a club from the list above to manage its members." />
+          <TableEmpty title="No club selected" sub="Choose a club from the list above to manage its members." />
         ) : membersLoading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "#78716c" }}>Loading members…</div>
-        ) : searchedMembers.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Email</th>
-                  <th>Roll number</th>
-                  <th>Designated role</th>
-                  <th>Joined at</th>
-                  <th className="text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchedMembers.map((member) => (
-                  <tr key={member.id}>
-                    <td>
-                      <div className="cell-name">
-                        <TableAvatar name={member.full_name} tone="accent" />
-                        <div className="cell-name-text">
-                          <span className="cell-name-primary">{member.full_name}</span>
-                          <span className="cell-name-secondary">Member</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ color: "#57534e" }}>{member.email}</td>
-                    <td>
-                      <span className="cell-mono">{member.roll_number || "—"}</span>
-                    </td>
-                    <td>
-                      <span className={`pill ${POSITION_PILL[member.position] || "pill-muted"}`}>
-                        {member.position}
-                      </span>
-                    </td>
-                    <td style={{ color: "#57534e", fontSize: "0.85rem" }}>{member.joined_at}</td>
-                    <td>
-                      <div className="cell-actions">
-                        <ActionButton
-                          tone="danger"
-                          title="Remove member"
-                          onClick={() => handleRemoveMember(member.id, member.full_name)}
-                        >
-                          <TrashIcon />
-                        </ActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading members…
           </div>
+        ) : searchedMembers.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Roll number</TableHead>
+                <TableHead>Designated role</TableHead>
+                <TableHead>Joined at</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchedMembers.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <TableAvatar name={member.full_name} tone="accent" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{member.full_name}</span>
+                        <span className="text-xs text-muted-foreground">Member</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                  <TableCell>
+                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{member.roll_number || "—"}</code>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={POSITION_TONE[member.position] || "muted"}>{member.position}</StatusBadge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{member.joined_at}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <ActionButton
+                        tone="danger"
+                        title="Remove member"
+                        onClick={() => setRemoveTarget(member)}
+                      >
+                        <Trash2 className="size-4" />
+                      </ActionButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <TableEmpty
-            icon="👥"
             title={search ? "No matches" : "No members yet"}
             sub={search ? "Try a different search term." : "Add the first member to this club."}
           />
         )}
-      </div>
+      </Card>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        title="Remove member?"
+        description={removeTarget ? `Remove ${removeTarget.full_name} from this club? This can't be undone.` : ""}
+        confirmLabel="Remove"
+        onConfirm={handleRemoveMember}
+      />
     </div>
   );
 };

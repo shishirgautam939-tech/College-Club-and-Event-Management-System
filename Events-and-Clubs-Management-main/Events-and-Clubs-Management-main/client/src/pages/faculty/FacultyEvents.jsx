@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check, ClipboardCheck, Eye, Loader2, X } from "lucide-react";
 import {
   getFacultyProposedEvents,
   reviewEvent,
@@ -7,6 +8,23 @@ import {
   completeEvent,
 } from "../../api/events";
 import { formatDate, formatDateTime } from "../../utils/formatDate";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableEmpty } from "@/components/TableBits";
 
 const FacultyEvents = () => {
   const navigate = useNavigate();
@@ -74,181 +92,154 @@ const FacultyEvents = () => {
     }
   };
 
-  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading…</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Tabs */}
-      <div className="flex items-center gap-4 border-b border-gray-200">
-        <button
-          onClick={() => setTab("pending")}
-          className={`pb-2 px-1 text-sm font-medium border-b-2 transition cursor-pointer ${
-            tab === "pending"
-              ? "border-indigo-600 text-indigo-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Pending Review ({events.length})
-        </button>
-        <button
-          onClick={() => setTab("approved")}
-          className={`pb-2 px-1 text-sm font-medium border-b-2 transition cursor-pointer ${
-            tab === "approved"
-              ? "border-indigo-600 text-indigo-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Approved Events
-        </button>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={<><ClipboardCheck className="size-3.5" /> Approvals</>}
+        title="Faculty reviews"
+        subtitle="Review pending event proposals and complete approved events."
+      />
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
-      )}
-      {actionSuccess && (
-        <div className="bg-green-50 text-green-600 p-3 rounded text-sm">{actionSuccess}</div>
-      )}
-      {actionError && (
-        <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{actionError}</div>
-      )}
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
+      {actionSuccess && <InlineAlert type="success">{actionSuccess}</InlineAlert>}
+      {actionError && <InlineAlert type="error">{actionError}</InlineAlert>}
 
-      {/* ─── Pending Review Tab ─── */}
-      {tab === "pending" && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Proposed Events — Pending Review
-          </h2>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="pending" className="gap-1.5">
+            Pending review
+            <StatusBadge tone="muted">{events.length}</StatusBadge>
+          </TabsTrigger>
+          <TabsTrigger value="approved">Approved events</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="mt-4 flex flex-col gap-4">
           {events.length === 0 ? (
-            <p className="text-gray-500 text-sm">No pending event proposals.</p>
+            <Card className="p-10 text-center">
+              <p className="text-sm text-muted-foreground">No pending event proposals.</p>
+            </Card>
           ) : (
-            <div className="space-y-4">
-              {events.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-indigo-200 transition"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{ev.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        <span className="font-medium">Club:</span> {ev.club_name} &nbsp;|&nbsp;
-                        <span className="font-medium">Proposed by:</span> {ev.created_by_name} &nbsp;|&nbsp;
-                        <span className="font-medium">Event Date:</span>{" "}
-                        {formatDate(ev.event_date)}
-                      </p>
-                      {ev.description && (
-                        <p className="text-sm text-gray-600 mt-2">{ev.description}</p>
-                      )}
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                      {ev.status}
-                    </span>
+            events.map((ev) => (
+              <Card key={ev.id} className="p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-foreground">{ev.title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      <strong className="font-medium text-foreground">Club:</strong> {ev.club_name} &nbsp;·&nbsp;
+                      <strong className="font-medium text-foreground">Proposed by:</strong> {ev.created_by_name} &nbsp;·&nbsp;
+                      <strong className="font-medium text-foreground">Event date:</strong> {formatDate(ev.event_date)}
+                    </p>
+                    {ev.description && <p className="mt-2 text-sm text-muted-foreground">{ev.description}</p>}
                   </div>
-
-                  {reviewingId === ev.id ? (
-                    <div className="mt-4 space-y-3 border-t pt-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Remarks (optional)
-                        </label>
-                        <textarea
-                          value={remarks}
-                          onChange={(e) => setRemarks(e.target.value)}
-                          rows={2}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                          placeholder="Add remarks..."
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleReview(ev.id, "Approved")}
-                          className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 cursor-pointer"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleReview(ev.id, "Rejected")}
-                          className="px-4 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                        <button
-                          onClick={() => {
-                            setReviewingId(null);
-                            setRemarks("");
-                          }}
-                          className="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3">
-                      <button
-                        onClick={() => setReviewingId(ev.id)}
-                        className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 cursor-pointer"
-                      >
-                        Review
-                      </button>
-                    </div>
-                  )}
+                  <StatusBadge tone="warning">{ev.status}</StatusBadge>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ─── Approved Events Tab ─── */}
-      {tab === "approved" && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Approved Events
-          </h2>
-          {approvedEvents.length === 0 ? (
-            <p className="text-gray-500 text-sm">No approved events.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm dashboard-table">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-500">
-                    <th className="py-2 pr-4 font-medium">Title</th>
-                    <th className="py-2 pr-4 font-medium">Club</th>
-                    <th className="py-2 pr-4 font-medium">Date</th>
-                    <th className="py-2 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {approvedEvents.map((ev) => (
-                    <tr key={ev.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 pr-4 font-medium text-gray-800">{ev.title}</td>
-                      <td className="py-3 pr-4 text-gray-600">{ev.club_name}</td>
-                      <td className="py-3 pr-4 text-gray-600">{formatDateTime(ev.event_date)}</td>
-                      <td className="py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleComplete(ev.id)}
-                            className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 cursor-pointer"
-                          >
-                            Complete
-                          </button>
-                          <button
-                            onClick={() => navigate(`/faculty/events/${ev.id}/attendance`)}
-                            className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 cursor-pointer"
-                          >
-                            Attendance
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                {reviewingId === ev.id ? (
+                  <div className="mt-4 flex flex-col gap-3 border-t pt-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`remarks-${ev.id}`}>Remarks (optional)</Label>
+                      <Textarea
+                        id={`remarks-${ev.id}`}
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        rows={2}
+                        placeholder="Add remarks…"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => handleReview(ev.id, "Approved")} className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                        <Check className="size-4" /> Approve
+                      </Button>
+                      <Button onClick={() => handleReview(ev.id, "Rejected")} variant="destructive" className="gap-1.5">
+                        <X className="size-4" /> Reject
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setReviewingId(null);
+                          setRemarks("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={() => setReviewingId(ev.id)} className="gap-1.5">
+                      <Eye className="size-4" /> Review
+                    </Button>
+                    <Button
+                      onClick={() => handleReview(ev.id, "Approved")}
+                      variant="outline"
+                      className="gap-1.5 text-emerald-700 hover:text-emerald-700"
+                    >
+                      <Check className="size-4" /> Quick approve
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            ))
           )}
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="approved" className="mt-4">
+          <Card className="gap-0 overflow-hidden p-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                Approved &amp; upcoming <span className="font-normal text-muted-foreground">· {approvedEvents.length} events</span>
+              </span>
+            </div>
+            {approvedEvents.length === 0 ? (
+              <TableEmpty title="No approved events" />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Club</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvedEvents.map((ev) => (
+                    <TableRow key={ev.id}>
+                      <TableCell className="font-medium text-foreground">{ev.title}</TableCell>
+                      <TableCell className="text-muted-foreground">{ev.club_name}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDateTime(ev.event_date)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={() => handleComplete(ev.id)}>
+                            <Check className="size-3.5" /> Complete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => navigate(`/admin/events/${ev.id}/attendance`)}
+                          >
+                            <ClipboardCheck className="size-3.5" /> Attendance
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

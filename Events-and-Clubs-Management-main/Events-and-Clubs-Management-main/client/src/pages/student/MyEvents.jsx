@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Bookmark, Loader2, ScanLine } from "lucide-react";
 import {
   getMyRegistrations,
   unregisterFromEvent,
@@ -8,6 +9,11 @@ import {
 import { saveBlobAsFile } from "../../utils/downloadFile";
 import { formatDateTime } from "../../utils/formatDate";
 import EventQRModal from "../../components/EventQRModal";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const MyEvents = () => {
   const [registrations, setRegistrations] = useState([]);
@@ -70,114 +76,115 @@ const MyEvents = () => {
   const upcoming = registrations.filter((r) => r.event_status === "Approved");
   const completed = registrations.filter((r) => r.event_status === "Completed");
 
-  if (loading) return <p className="text-stone-500">Loading your events...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading your events…</span>
+      </div>
+    );
+  }
 
   const attendanceBadge = (status) => {
-    if (status === "Present") return <span className="badge badge-success">Present</span>;
-    if (status === "Absent") return <span className="badge bg-red-50 text-red-700">Absent</span>;
-    return <span className="badge badge-muted">Not marked</span>;
+    if (status === "Present") return <StatusBadge tone="success">Present</StatusBadge>;
+    if (status === "Absent") return <StatusBadge tone="danger">Absent</StatusBadge>;
+    return <StatusBadge tone="muted">Not marked</StatusBadge>;
   };
 
   return (
-    <div className="page-shell space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="page-title">My Events</h1>
-          <p className="page-subtitle">Track your registrations, attendance, and certificates in one place.</p>
-        </div>
-        <Link to="/scan-attendance" className="btn-primary">
-          Scan QR to check in
-        </Link>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={<><Bookmark className="size-3.5" /> Your registrations</>}
+        title="My events"
+        subtitle="Track your registrations, attendance, and certificates in one place."
+        actions={
+          <Button variant="secondary" className="gap-2" nativeButton={false} render={<Link to="/scan-attendance" />}>
+            <ScanLine className="size-4" />
+            Scan QR to check in
+          </Button>
+        }
+      />
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionMsg.text}
-        </div>
-      )}
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
       {registrations.length === 0 ? (
-        <div className="card p-10 text-center bg-gradient-to-br from-white to-cream-50 shadow-sm">
-          <p className="text-stone-500 mb-4">You haven&apos;t joined any events yet.</p>
-          <Link to="/dashboard" className="btn-primary inline-block">
-            Browse events
-          </Link>
-        </div>
+        <Card className="p-10 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">You haven&apos;t joined any events yet.</p>
+          <Button nativeButton={false} render={<Link to="/dashboard" />}>Browse events</Button>
+        </Card>
       ) : (
         <>
           {upcoming.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-900">Upcoming ({upcoming.length})</h2>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-base font-semibold text-foreground">Upcoming ({upcoming.length})</h2>
               <div className="grid gap-4">
                 {upcoming.map((r) => (
-                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <Card key={r.id} className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h3 className="font-semibold text-stone-900">{r.event_title}</h3>
-                      <p className="text-sm text-brand-700">{r.club_name}</p>
-                      <p className="text-sm text-stone-500 mt-1">
+                      <h3 className="font-semibold text-foreground">{r.event_title}</h3>
+                      <p className="text-sm text-primary">{r.club_name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {formatDateTime(r.event_date)} · {r.venue || "Venue TBA"}
                       </p>
                       {(r.attendance_qr_active || r.qr_payload) ? (
                         <div className="mt-3 flex flex-wrap items-center gap-3">
-                          <span className="badge badge-success">{r.attendance_qr_active ? "QR active" : "QR ready"}</span>
-                          <button
+                          <StatusBadge tone="success">{r.attendance_qr_active ? "QR active" : "QR ready"}</StatusBadge>
+                          <Button
                             type="button"
-                            onClick={() => setQrEvent({
-                              id: r.event,
-                              title: r.event_title,
-                            })}
-                            className="btn-secondary"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setQrEvent({ id: r.event, title: r.event_title })}
                           >
                             View QR
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Link to="/scan-attendance" className="btn-secondary">
+                      <Button variant="outline" nativeButton={false} render={<Link to="/scan-attendance" />}>
                         Check in
-                      </Link>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => handleUnregister(r.event)}
                         disabled={actionInProgress === r.event}
-                        className="btn-secondary text-red-700 hover:bg-red-50"
+                        className="text-destructive hover:text-destructive"
                       >
                         {actionInProgress === r.event ? "Processing..." : "Unregister"}
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             </section>
           )}
 
           {completed.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-900">Past events ({completed.length})</h2>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-base font-semibold text-foreground">Past events ({completed.length})</h2>
               <div className="grid gap-4">
                 {completed.map((r) => (
-                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <Card key={r.id} className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h3 className="font-semibold text-stone-900">{r.event_title}</h3>
-                      <p className="text-sm text-brand-700">{r.club_name}</p>
-                      <p className="text-sm text-stone-500 mt-1">
+                      <h3 className="font-semibold text-foreground">{r.event_title}</h3>
+                      <p className="text-sm text-primary">{r.club_name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {formatDateTime(r.event_date)} · {r.venue || "—"}
                       </p>
                       <div className="mt-2">{attendanceBadge(r.attendance_status)}</div>
                     </div>
-                    {(r.event_status === "Completed") && (
-                      <button
+                    {r.event_status === "Completed" && (
+                      <Button
                         type="button"
                         onClick={() => handleDownloadCertificate(r)}
                         disabled={downloadingId === r.event}
-                        className="btn-accent"
                       >
                         {downloadingId === r.event ? "Preparing..." : "Download certificate"}
-                      </button>
+                      </Button>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             </section>
@@ -186,11 +193,7 @@ const MyEvents = () => {
       )}
 
       {qrEvent && (
-        <EventQRModal
-          event={qrEvent}
-          onClose={() => setQrEvent(null)}
-          onAfterClose={() => setQrEvent(null)}
-        />
+        <EventQRModal event={qrEvent} onClose={() => setQrEvent(null)} onAfterClose={() => setQrEvent(null)} />
       )}
     </div>
   );

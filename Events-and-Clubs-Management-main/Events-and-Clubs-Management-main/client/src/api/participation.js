@@ -56,9 +56,20 @@ export const downloadMyEventCertificate = async (eventId) => {
 };
 
 export const downloadCertificate = async (certificateOrUrl) => {
-  const url = typeof certificateOrUrl === 'string'
-    ? certificateOrUrl
-    : `certificates/${certificateOrUrl}/download/`;
+  let url;
+  if (typeof certificateOrUrl === "string") {
+    // The API serializes download_url as a root-relative path
+    // ("/api/certificates/download/<code>/"). Axios resolves that against
+    // baseURL — which already ends in /api/ — producing /api/api/… and a
+    // guaranteed 404, so strip any origin plus the duplicated /api/ prefix
+    // and let baseURL supply them.
+    url = certificateOrUrl
+      .replace(/^https?:\/\/[^/]+/, "")
+      .replace(/^\/?api\//, "")
+      .replace(/^\//, "");
+  } else {
+    url = `certificates/${certificateOrUrl}/download/`;
+  }
   const response = await api.get(url, {
     responseType: "blob",
   });

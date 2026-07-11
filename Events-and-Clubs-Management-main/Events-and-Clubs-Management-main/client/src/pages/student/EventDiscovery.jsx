@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
+import { Calendar, Loader2, MapPin, Search, Users, Zap } from "lucide-react";
 import { getApprovedEvents } from "../../api/events";
 import { registerForEvent, unregisterFromEvent } from "../../api/participation";
 import { formatDateTime } from "../../utils/formatDate";
 import useAuth from "../../hooks/useAuth";
 import EventQRModal from "../../components/EventQRModal";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const EventDiscovery = () => {
   const { user } = useAuth();
@@ -64,7 +71,14 @@ const EventDiscovery = () => {
     }
   };
 
-  if (loading) return <p className="text-stone-500">Loading events...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading events…</span>
+      </div>
+    );
+  }
 
   const filtered = events.filter(
     (ev) =>
@@ -73,112 +87,120 @@ const EventDiscovery = () => {
       (ev.venue || "").toLowerCase().includes(search.toLowerCase()),
   );
 
+  const isFull = (ev) => ev.spots_left === 0;
+
   return (
-    <div className="page-shell">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="page-title">Discover Events</h1>
-          <p className="page-subtitle">
-            Find workshops, club activities, and campus gatherings worth showing up for.
-          </p>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={<><Zap className="size-3.5" /> Discover</>}
+        title="Find your next event"
+        subtitle={`${events.length} approved event${events.length === 1 ? "" : "s"} on campus · register, attend, and earn certificates.`}
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} event{filtered.length === 1 ? "" : "s"} matching your search
+        </p>
+        <div className="relative w-full sm:w-80">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by name, club, or venue…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 pl-9"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Search by name, club, or venue..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input-field sm:w-72"
-        />
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionMsg.text}
-        </div>
-      )}
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
       {filtered.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="text-stone-500">
+        <Card className="p-10 text-center">
+          <p className="text-sm text-muted-foreground">
             {search ? "No events match your search." : "Nothing scheduled right now. Check back soon."}
           </p>
-        </div>
+        </Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((ev) => (
-            <article key={ev.id} className="event-card">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="text-lg font-semibold text-stone-800 leading-snug">{ev.title}</h3>
-                {ev.is_registered && <span className="badge badge-success shrink-0">Joined</span>}
+            <Card key={ev.id} className="p-5">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-lg leading-snug font-semibold text-foreground">{ev.title}</h3>
+                {ev.is_registered && <StatusBadge tone="success">Joined</StatusBadge>}
               </div>
 
-              <p className="text-sm text-brand-700 font-medium mb-2">{ev.club_name}</p>
+              <p className="mt-1.5 text-sm font-semibold text-primary">{ev.club_name}</p>
 
               {ev.description && (
-                <p className="text-sm text-stone-600 mb-4 line-clamp-3">{ev.description}</p>
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{ev.description}</p>
               )}
 
-              <div className="space-y-1 text-sm text-stone-500 mb-5 flex-1">
-                <p>{formatDateTime(ev.event_date)}</p>
-                {ev.venue && <p>{ev.venue}</p>}
-                <p>
-                  {ev.registration_count}
+              <div className="mt-4 flex-1 space-y-1.5 text-sm text-muted-foreground">
+                <p className="flex items-center gap-1.5">
+                  <Calendar className="size-3.5 shrink-0" />
+                  {formatDateTime(ev.event_date)}
+                </p>
+                {ev.venue && (
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="size-3.5 shrink-0" />
+                    {ev.venue}
+                  </p>
+                )}
+                <p className="flex items-center gap-1.5">
+                  <Users className="size-3.5 shrink-0" />
+                  <strong className="font-semibold text-foreground">{ev.registration_count}</strong>
                   {ev.max_participants ? ` / ${ev.max_participants}` : ""} registered
-                  {ev.spots_left === 0 && <span className="text-red-600 ml-1">· Full</span>}
+                  {isFull(ev) && (
+                    <StatusBadge tone="danger" className="ml-1">
+                      Full
+                    </StatusBadge>
+                  )}
                 </p>
               </div>
 
               {user?.role === "Student" && (
-                <div className="pt-4 border-t border-stone-100">
+                <div className="mt-4 border-t pt-4">
                   {ev.is_registered ? (
                     <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between text-xs text-stone-500">
-                        <span>
-                          {ev.attendance_qr_active
-                            ? "QR ready for check-in"
-                            : "Preparing your QR…"}
-                        </span>
-                        {ev.attendance_qr_active && (
-                          <span className="badge badge-success">Active</span>
-                        )}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{ev.attendance_qr_active ? "QR ready for check-in" : "Preparing your QR…"}</span>
+                        {ev.attendance_qr_active && <StatusBadge tone="success">Active</StatusBadge>}
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => setQrEvent(ev)}
                           disabled={!ev.attendance_qr_active}
-                          className="btn-primary flex-1"
+                          className="flex-1"
                         >
                           Show my QR
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => handleUnregister(ev.id)}
                           disabled={actionInProgress === ev.id}
-                          className="btn-secondary text-red-700 hover:bg-red-50"
+                          className="text-destructive hover:text-destructive"
                         >
                           {actionInProgress === ev.id ? "…" : "Cancel"}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRegister(ev.id)}
-                      disabled={actionInProgress === ev.id || ev.spots_left === 0}
-                      className="btn-primary w-full"
+                      disabled={actionInProgress === ev.id || isFull(ev)}
+                      className="w-full"
                     >
-                      {actionInProgress === ev.id
-                        ? "Processing..."
-                        : ev.spots_left === 0
-                          ? "Event full"
-                          : "Register"}
-                    </button>
+                      {actionInProgress === ev.id ? "Processing…" : isFull(ev) ? "Event full" : "Register"}
+                    </Button>
                   )}
                 </div>
               )}
-            </article>
+            </Card>
           ))}
         </div>
       )}
