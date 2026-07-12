@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { ArrowRight, Loader2, Lock, User } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 import Logo from "../../components/Logo";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ const MIN_SECOND_LEVEL_DOMAIN_LENGTHS = {
   com: 5,
   edu: 3,
 };
+const MIN_PASSWORD_LENGTH = 5;
 
 function getEmailDomainInfo(email) {
   const at = email.lastIndexOf("@");
@@ -82,6 +83,7 @@ const features = [
 const Login = () => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -111,6 +113,11 @@ const Login = () => {
         setError("That email domain looks incomplete. Use a full provider name like gmail.com, outlook.com, or your college's .edu address.");
         return;
       }
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
     }
 
     setLoading(true);
@@ -234,14 +241,24 @@ const Login = () => {
                   <Lock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={MIN_PASSWORD_LENGTH}
                     autoComplete="current-password"
-                    className="h-11 pl-9"
+                    className="h-11 pr-10 pl-9"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
                 </div>
               </div>
 
