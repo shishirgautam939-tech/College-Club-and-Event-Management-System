@@ -26,6 +26,13 @@ const BRANCHES = [
   { code: "BEI", label: "BEI - Electronics", tone: "violet" },
 ];
 
+const BRANCH_ICON_CLASS = {
+  info: "bg-sky-100 text-sky-600",
+  success: "bg-emerald-100 text-emerald-600",
+  warning: "bg-amber-100 text-amber-600",
+  violet: "bg-violet-100 text-violet-600",
+};
+
 const Students = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -135,13 +142,13 @@ const Students = () => {
             return (
               <Link key={b.code} to={`/admin/students?branch=${b.code}`}>
                 <Card className="flex flex-col items-center gap-1.5 p-6 text-center transition-all hover:-translate-y-0.5 hover:shadow-md">
-                  <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <span className={`flex size-11 items-center justify-center rounded-xl ${BRANCH_ICON_CLASS[b.tone] || "bg-primary/10 text-primary"}`}>
                     <GraduationCap className="size-5" />
                   </span>
                   <p className="mt-1 font-semibold text-foreground">{b.code}</p>
                   <p className="text-xs text-muted-foreground">{b.label.split(" - ")[1]}</p>
                   <p className="text-2xl font-bold tracking-tight text-foreground">{count}</p>
-                  <StatusBadge tone="brand">Students</StatusBadge>
+                  <StatusBadge tone={b.tone}>Students</StatusBadge>
                 </Card>
               </Link>
             );

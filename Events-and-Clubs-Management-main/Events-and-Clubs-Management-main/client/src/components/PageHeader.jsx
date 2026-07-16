@@ -3,11 +3,12 @@ import { cn } from "@/lib/utils";
 const PageHeader = ({ eyebrow, title, subtitle, actions, className }) => (
   <div
     className={cn(
-      "relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#35543b] to-[#27402d] px-6 py-5 text-white shadow-lg shadow-[#243f27]/20",
+      "relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0d3b34] via-[#146356] to-[#1c3f57] px-6 py-5 text-white shadow-lg shadow-[#0d3b34]/25",
       className
     )}
   >
-    <div className="pointer-events-none absolute -top-1/2 -right-[10%] h-[200%] w-[60%] rounded-full bg-orange-400/20 blur-3xl" />
+    <div className="pointer-events-none absolute -top-1/2 -right-[10%] h-[200%] w-[60%] rounded-full bg-amber-300/25 blur-3xl" />
+    <div className="pointer-events-none absolute -bottom-1/2 -left-[10%] h-[200%] w-[45%] rounded-full bg-sky-400/10 blur-3xl" />
     <div className="relative z-10">
       {eyebrow && (
         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs font-semibold tracking-[0.1em] text-white/80 uppercase">
