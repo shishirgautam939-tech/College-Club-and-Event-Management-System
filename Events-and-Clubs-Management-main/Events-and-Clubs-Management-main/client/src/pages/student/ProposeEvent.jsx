@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, PencilLine } from "lucide-react";
+import { Loader2, PencilLine, Wallet } from "lucide-react";
 import { getMyClubs, proposeEvent } from "../../api/events";
 import PageHeader from "@/components/PageHeader";
 import InlineAlert from "@/components/InlineAlert";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ const ProposeEvent = () => {
     venue: "",
     max_participants: "",
     event_date: "",
+    payment_required: false,
+    fee: "",
   });
 
   // The earliest moment the user is allowed to schedule an event for:
@@ -100,6 +103,14 @@ const ProposeEvent = () => {
       return;
     }
 
+    // Paid events need a Khalti-acceptable fee (minimum NPR 10).
+    const feeValue = Number(form.fee);
+    if (form.payment_required && (!form.fee || Number.isNaN(feeValue) || feeValue < 10)) {
+      setError("A paid event needs a fee of at least NPR 10.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await proposeEvent({
         club: parseInt(form.club),
@@ -108,9 +119,20 @@ const ProposeEvent = () => {
         venue: form.venue,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         event_date: form.event_date,
+        payment_required: form.payment_required,
+        fee: form.payment_required ? feeValue : 0,
       });
       setSuccess("Event proposed successfully! It is now pending review.");
-      setForm({ club: "", title: "", description: "", venue: "", max_participants: "", event_date: "" });
+      setForm({
+        club: "",
+        title: "",
+        description: "",
+        venue: "",
+        max_participants: "",
+        event_date: "",
+        payment_required: false,
+        fee: "",
+      });
     } catch (err) {
       const data = err.response?.data;
       // Surface the most specific field error we can find. The
@@ -122,6 +144,7 @@ const ProposeEvent = () => {
         data?.event_date ||
         data?.title?.[0] ||
         data?.club?.[0] ||
+        data?.fee?.[0] ||
         data?.non_field_errors?.[0] ||
         data?.detail ||
         "Failed to propose event.";
@@ -258,6 +281,47 @@ const ProposeEvent = () => {
                 className="h-10"
               />
               <p className="text-xs text-muted-foreground">Must be a future date and time.</p>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={form.payment_required}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, payment_required: Boolean(checked) })
+                  }
+                  className="mt-0.5"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <Wallet className="size-4" /> Make this a paid event
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Students pay the fee via Khalti before their registration is confirmed.
+                  </span>
+                </span>
+              </label>
+
+              {form.payment_required && (
+                <div className="flex flex-col gap-1.5 pl-7">
+                  <Label htmlFor="fee">Registration fee (NPR)</Label>
+                  <Input
+                    id="fee"
+                    type="number"
+                    name="fee"
+                    value={form.fee}
+                    onChange={handleChange}
+                    min="10"
+                    step="1"
+                    required
+                    placeholder="e.g. 100"
+                    className="h-10 max-w-[200px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Minimum NPR 10. The faculty reviewer can adjust this before approval.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end border-t pt-4">

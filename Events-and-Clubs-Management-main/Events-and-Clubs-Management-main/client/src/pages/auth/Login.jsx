@@ -141,7 +141,7 @@ const Login = () => {
       {/* Brand / hero panel */}
       <aside
         aria-hidden="true"
-        className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-[#F8F9FA] p-10 text-foreground lg:flex"
+        className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-gradient-to-br from-[#f6f8f7] via-[#f2f4f6] to-[#eceff4] p-10 text-foreground lg:flex"
       >
         <div className="pointer-events-none absolute -top-20 -right-12 size-72 rounded-full bg-orange-400/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-8 size-64 rounded-full bg-sky-400/15 blur-3xl" />
@@ -190,13 +190,13 @@ const Login = () => {
       </aside>
 
       {/* Form panel */}
-      <main className="flex flex-col justify-center bg-[#F8F9FA] px-6 py-10 sm:px-10 lg:px-16">
+      <main className="flex flex-col justify-center bg-gradient-to-b from-[#f7f8f9] to-[#eef1f4] px-6 py-10 sm:px-10 lg:px-16">
         <div className="mx-auto w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-500">
           <Link to="/" className="mb-6 flex items-center gap-2 lg:hidden">
             <Logo compact markSize={36} />
           </Link>
 
-          <div className="rounded-2xl border border-border bg-white p-8 shadow-sm sm:p-10">
+          <div className="rounded-3xl border border-border/70 bg-white/90 p-8 shadow-soft-lg backdrop-blur-xl sm:p-10">
             <span className="text-[0.68rem] font-bold tracking-[0.18em] text-primary uppercase">Welcome back</span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground">Sign in to Evento</h2>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -227,6 +227,12 @@ const Login = () => {
                     onChange={(e) => setIdentifier(e.target.value)}
                     required
                     autoComplete="username"
+                    // Mobile keyboards auto-capitalize the first letter and
+                    // autocorrect words, which turns "name@gmail.com" into
+                    // "Name@gmail.com" and breaks the login. Disable both.
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="h-11 pl-9"
                   />
                 </div>

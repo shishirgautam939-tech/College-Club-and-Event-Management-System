@@ -253,18 +253,26 @@ const AdminLayout = () => {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{pageMeta.title}</p>
+            {pageMeta.meta && (
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">{pageMeta.meta}</p>
+            )}
           </div>
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
+          <div className="ml-auto flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
             <span className="hidden sm:inline">Signed in as Admin</span>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">
-          <Outlet />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

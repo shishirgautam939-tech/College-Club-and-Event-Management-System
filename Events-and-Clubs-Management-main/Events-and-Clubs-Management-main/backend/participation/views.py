@@ -75,6 +75,25 @@ class RegisterForEventView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Paid events must be registered through the payment flow: a
+        # registration is only created after a completed Khalti payment.
+        # Reject direct registration here so the requirement can't be bypassed.
+        if event.payment_required:
+            from payments.models import PaymentTransaction
+            has_paid = PaymentTransaction.objects.filter(
+                event=event, user=user,
+                status=PaymentTransaction.STATUS_COMPLETED,
+            ).exists()
+            if not has_paid:
+                return Response(
+                    {
+                        'detail': 'This event requires payment. Please complete the payment to register.',
+                        'payment_required': True,
+                        'fee': str(event.fee),
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+
         registration = EventRegistration.objects.create(event=event, user=user)
 
         # Make sure the student has a usable attendance QR the moment they

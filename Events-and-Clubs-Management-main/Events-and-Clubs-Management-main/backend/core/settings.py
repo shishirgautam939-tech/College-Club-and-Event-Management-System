@@ -40,9 +40,18 @@ ALLOWED_HOSTS = [
 ]
 
 if DEBUG or LOCAL_DEVELOPMENT:
-    for host in ['localhost', '127.0.0.1', '[::1]']:
+    # '10.0.2.2' is the Android emulator's fixed alias for the host
+    # machine's localhost (see mobile/src/api/config.js) — without it, every
+    # request from the emulator gets rejected with DisallowedHost before it
+    # even reaches a view.
+    for host in ['localhost', '127.0.0.1', '[::1]', '10.0.2.2']:
         if host not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(host)
+    # A physical phone on the same Wi-Fi hits the backend via the dev
+    # machine's LAN IP (see mobile/.env), which changes with DHCP — so in
+    # local dev accept any host rather than chasing the current IP.
+    if '*' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('*')
 
 # Render.com sets this automatically
 RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
@@ -63,6 +72,7 @@ INSTALLED_APPS = [
     'clubs',
     'events',
     'participation',
+    'payments',
     'rest_framework',
     'corsheaders',
 ]
@@ -227,6 +237,42 @@ SIMPLE_JWT = {
 # Default primary key field type for models that don't specify one explicitly
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ─── Khalti e-Payment (KPG-2) ───────────────────────────────────────
+# Docs: https://docs.khalti.com/khalti-epayment/
+# Defaults point at Khalti's SANDBOX. There is NO universal public sandbox key:
+# each merchant must create a free test account at https://dev.khalti.com/,
+# then copy their **Secret Key** from Merchant Dashboard → Settings → Keys and
+# set it as KHALTI_SECRET_KEY (in backend/.env). The placeholder below will fail
+# authentication ("Invalid token") until you replace it with your own key.
+# For production, also switch KHALTI_BASE_URL to https://khalti.com/api/v2.
+KHALTI_BASE_URL = os.getenv('KHALTI_BASE_URL', 'https://dev.khalti.com/api/v2')
+KHALTI_SECRET_KEY = os.getenv(
+    'KHALTI_SECRET_KEY', 'test_secret_key_68791341fdd94846a146f0457ff7b455'
+)
+# Where Khalti redirects the browser after payment — a frontend route that
+# reads ?pidx=…&status=… and calls the verify endpoint.
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+KHALTI_RETURN_URL = os.getenv('KHALTI_RETURN_URL', f'{FRONTEND_URL}/payment/callback')
+KHALTI_WEBSITE_URL = os.getenv('KHALTI_WEBSITE_URL', FRONTEND_URL)
+# Khalti rejects payments below NPR 10 (1000 paisa).
+KHALTI_MIN_AMOUNT_PAISA = int(os.getenv('KHALTI_MIN_AMOUNT_PAISA', '1000'))
+KHALTI_TIMEOUT = int(os.getenv('KHALTI_TIMEOUT', '20'))
+
+# Mock/simulation mode. When on, the app simulates Khalti's payment flow with a
+# local dummy checkout instead of calling the real gateway — so the end-to-end
+# flow is fully testable without a Khalti merchant account. It auto-enables when
+# no real secret key is configured (i.e. the shipped placeholder is still in
+# place), and turns itself off the moment a real key is set. Force it explicitly
+# with KHALTI_MOCK_MODE=True/False.
+_KHALTI_PLACEHOLDER_KEY = 'test_secret_key_68791341fdd94846a146f0457ff7b455'
+_khalti_mock_env = os.getenv('KHALTI_MOCK_MODE')
+if _khalti_mock_env is not None:
+    KHALTI_MOCK_MODE = _khalti_mock_env.strip().lower() in ('true', '1', 'yes')
+else:
+    KHALTI_MOCK_MODE = (
+        not KHALTI_SECRET_KEY or KHALTI_SECRET_KEY == _KHALTI_PLACEHOLDER_KEY
+    )
 
 # Production security settings
 if not DEBUG and not LOCAL_DEVELOPMENT:

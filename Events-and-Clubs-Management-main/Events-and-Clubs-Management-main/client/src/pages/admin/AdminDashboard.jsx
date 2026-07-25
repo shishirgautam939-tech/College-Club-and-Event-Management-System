@@ -117,9 +117,12 @@ const AdminDashboard = () => {
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card) => (
+        {cards.map((card, i) => (
           <Link key={card.label} to={card.link} className="group block">
-            <Card className="relative overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <Card
+              className="hover-lift animate-fade-up relative overflow-hidden p-5 hover:shadow-soft-lg"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
               <div className={cn("pointer-events-none absolute top-0 right-0 size-20 rounded-full opacity-30 blur-2xl transition-opacity group-hover:opacity-50", TONE_GLOW[card.tone])} />
               <div className={cn("relative z-10 flex size-11 items-center justify-center rounded-xl", TONE_ICON[card.tone])}>
                 <card.Icon className="size-5" />

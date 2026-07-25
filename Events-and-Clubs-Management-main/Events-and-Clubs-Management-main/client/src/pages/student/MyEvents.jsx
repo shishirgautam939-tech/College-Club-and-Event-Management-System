@@ -119,8 +119,12 @@ const MyEvents = () => {
             <section className="flex flex-col gap-3">
               <h2 className="text-base font-semibold text-foreground">Upcoming ({upcoming.length})</h2>
               <div className="grid gap-4">
-                {upcoming.map((r) => (
-                  <Card key={r.id} className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                {upcoming.map((r, i) => (
+                  <Card
+                    key={r.id}
+                    className="hover-lift animate-fade-up flex flex-col gap-4 p-5 hover:shadow-soft-lg md:flex-row md:items-center md:justify-between"
+                    style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
+                  >
                     <div>
                       <h3 className="font-semibold text-foreground">{r.event_title}</h3>
                       <p className="text-sm text-primary">{r.club_name}</p>
@@ -165,8 +169,12 @@ const MyEvents = () => {
             <section className="flex flex-col gap-3">
               <h2 className="text-base font-semibold text-foreground">Past events ({completed.length})</h2>
               <div className="grid gap-4">
-                {completed.map((r) => (
-                  <Card key={r.id} className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                {completed.map((r, i) => (
+                  <Card
+                    key={r.id}
+                    className="hover-lift animate-fade-up flex flex-col gap-4 p-5 hover:shadow-soft-lg md:flex-row md:items-center md:justify-between"
+                    style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
+                  >
                     <div>
                       <h3 className="font-semibold text-foreground">{r.event_title}</h3>
                       <p className="text-sm text-primary">{r.club_name}</p>

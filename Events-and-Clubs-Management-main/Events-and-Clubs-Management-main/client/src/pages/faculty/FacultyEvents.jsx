@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, ClipboardCheck, Eye, Loader2, X } from "lucide-react";
+import { Check, ClipboardCheck, Eye, Loader2, Wallet, X } from "lucide-react";
 import {
   getFacultyProposedEvents,
   reviewEvent,
   getAllEvents,
   completeEvent,
+  updateEventPayment,
 } from "../../api/events";
 import { formatDate, formatDateTime } from "../../utils/formatDate";
 import PageHeader from "@/components/PageHeader";
@@ -13,9 +14,19 @@ import StatusBadge from "@/components/StatusBadge";
 import InlineAlert from "@/components/InlineAlert";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -25,6 +36,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableEmpty } from "@/components/TableBits";
+
+const formatFee = (fee) => {
+  const amount = Number(fee);
+  if (Number.isNaN(amount)) return "NPR 0";
+  return `NPR ${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+};
 
 const FacultyEvents = () => {
   const navigate = useNavigate();
@@ -37,6 +54,12 @@ const FacultyEvents = () => {
   const [actionSuccess, setActionSuccess] = useState("");
   const [reviewingId, setReviewingId] = useState(null);
   const [remarks, setRemarks] = useState("");
+
+  // Payment settings dialog
+  const [paymentEvent, setPaymentEvent] = useState(null);
+  const [paymentForm, setPaymentForm] = useState({ payment_required: false, fee: "" });
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   useEffect(() => {
     fetchEvents();
@@ -89,6 +112,51 @@ const FacultyEvents = () => {
       fetchApproved();
     } catch (err) {
       setActionError(err.response?.data?.detail || "Action failed.");
+    }
+  };
+
+  const openPaymentDialog = (ev) => {
+    setPaymentError("");
+    setPaymentEvent(ev);
+    setPaymentForm({
+      payment_required: Boolean(ev.payment_required),
+      fee: ev.fee != null && Number(ev.fee) > 0 ? String(Number(ev.fee)) : "",
+    });
+  };
+
+  const handleSavePayment = async () => {
+    if (!paymentEvent) return;
+    setPaymentError("");
+
+    const payload = { payment_required: paymentForm.payment_required };
+    if (paymentForm.payment_required) {
+      const feeValue = Number(paymentForm.fee);
+      if (!paymentForm.fee || Number.isNaN(feeValue) || feeValue <= 0) {
+        setPaymentError("Please enter a valid fee to require payment.");
+        return;
+      }
+      payload.fee = feeValue;
+    } else if (paymentForm.fee !== "") {
+      // Preserve an edited fee even when payment is currently disabled.
+      const feeValue = Number(paymentForm.fee);
+      if (!Number.isNaN(feeValue) && feeValue >= 0) payload.fee = feeValue;
+    }
+
+    setSavingPayment(true);
+    try {
+      await updateEventPayment(paymentEvent.id, payload);
+      setActionError("");
+      setActionSuccess(
+        payload.payment_required
+          ? `Payment enabled for "${paymentEvent.title}".`
+          : `Payment disabled for "${paymentEvent.title}".`,
+      );
+      setPaymentEvent(null);
+      fetchApproved();
+    } catch (err) {
+      setPaymentError(err.response?.data?.detail || "Could not update payment settings.");
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -208,6 +276,7 @@ const FacultyEvents = () => {
                     <TableHead>Title</TableHead>
                     <TableHead>Club</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -218,9 +287,24 @@ const FacultyEvents = () => {
                       <TableCell className="text-muted-foreground">{ev.club_name}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDateTime(ev.event_date)}</TableCell>
                       <TableCell>
+                        {ev.payment_required ? (
+                          <StatusBadge tone="success">{formatFee(ev.fee)}</StatusBadge>
+                        ) : (
+                          <StatusBadge tone="muted">Free</StatusBadge>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center justify-end gap-2">
                           <Button size="sm" variant="outline" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={() => handleComplete(ev.id)}>
                             <Check className="size-3.5" /> Complete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => openPaymentDialog(ev)}
+                          >
+                            <Wallet className="size-3.5" /> Payment
                           </Button>
                           <Button
                             size="sm"
@@ -240,6 +324,69 @@ const FacultyEvents = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!paymentEvent} onOpenChange={(open) => !open && setPaymentEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="size-4" /> Payment settings
+            </DialogTitle>
+            <DialogDescription>
+              {paymentEvent
+                ? `Configure whether students must pay to register for "${paymentEvent.title}".`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          {paymentError && <InlineAlert type="error">{paymentError}</InlineAlert>}
+
+          <div className="flex flex-col gap-4 py-1">
+            <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+              <Checkbox
+                checked={paymentForm.payment_required}
+                onCheckedChange={(checked) =>
+                  setPaymentForm((f) => ({ ...f, payment_required: Boolean(checked) }))
+                }
+                className="mt-0.5"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Require payment to register</span>
+                <span className="text-xs text-muted-foreground">
+                  When enabled, students pay the fee via Khalti before their registration is confirmed.
+                </span>
+              </span>
+            </label>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="fee">Event fee (NPR)</Label>
+              <Input
+                id="fee"
+                type="number"
+                min="10"
+                step="1"
+                value={paymentForm.fee}
+                onChange={(e) => setPaymentForm((f) => ({ ...f, fee: e.target.value }))}
+                placeholder="e.g. 100"
+                disabled={!paymentForm.payment_required}
+                className="h-10"
+              />
+              <p className="text-xs text-muted-foreground">
+                Minimum NPR 10. Only charged while payment is required.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentEvent(null)} disabled={savingPayment}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePayment} disabled={savingPayment} className="gap-2">
+              {savingPayment ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+              {savingPayment ? "Saving…" : "Save settings"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

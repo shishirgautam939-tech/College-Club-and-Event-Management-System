@@ -24,6 +24,12 @@
   --radius-xl: 1.25rem;
   --radius-2xl: 1.5rem;
 
+  /* Soft, layered elevation ramp — used across cards, popovers and the FAB.
+     Diffuse multi-shadow stacks read far more premium than a single drop. */
+  --shadow-soft: 0 1px 2px rgba(28, 25, 23, 0.04), 0 4px 12px -2px rgba(28, 25, 23, 0.06), 0 12px 28px -10px rgba(28, 25, 23, 0.09);
+  --shadow-soft-lg: 0 2px 4px rgba(28, 25, 23, 0.04), 0 10px 28px -6px rgba(28, 25, 23, 0.10), 0 28px 56px -16px rgba(28, 25, 23, 0.16);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
   /* shadcn semantic tokens, mapped onto the Evento green/cream brand */
   --background: #fbfaf8;
   --foreground: #1c1917;
@@ -101,6 +107,10 @@
   --font-heading: var(--font-sans);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
   font-family: var(--font-sans);
   background: var(--background);
@@ -110,15 +120,103 @@ html, body {
   letter-spacing: -0.005em;
 }
 
+/* Ambient, corner-anchored colour wash — a soft cream → green → lavender →
+   terracotta bloom that gives every screen depth without hurting text
+   contrast. Kept low-opacity and fixed so it reads as premium, not loud. */
 body {
   background-image:
-    radial-gradient(ellipse at top left, rgba(20, 99, 86, 0.05), transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(196, 120, 90, 0.05), transparent 55%);
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(20, 99, 86, 0.06), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(242, 181, 69, 0.07), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 100% 100%, rgba(139, 92, 246, 0.06), transparent 62%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, rgba(196, 120, 90, 0.05), transparent 60%);
   background-attachment: fixed;
   min-height: 100vh;
 }
 
 * { box-sizing: border-box; }
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 22%, transparent);
+  color: var(--primary);
+}
+
+/* Slim, unobtrusive scrollbars for a native-app feel */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 15%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--foreground) 26%, transparent);
+  background-clip: padding-box;
+}
+
+/* ==========================================================================
+   Premium UI helpers — reusable, framework-agnostic classes layered on top
+   of the shadcn primitives. Kept as plain classes so Tailwind utilities on
+   the same element still win when a component needs to override them.
+   ========================================================================== */
+
+/* Diffuse elevation */
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-soft-lg { box-shadow: var(--shadow-soft-lg); }
+.shadow-glow-primary {
+  box-shadow: 0 10px 30px -8px color-mix(in oklch, var(--primary) 45%, transparent);
+}
+
+/* Glassmorphism surfaces */
+.glass {
+  background: color-mix(in oklch, var(--card) 68%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.glass-dark {
+  background: color-mix(in oklch, var(--sidebar) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Interactive lift — pair with a shadow utility for the classic hover pop */
+.hover-lift {
+  transition: transform 0.28s var(--ease-out-soft), box-shadow 0.28s var(--ease-out-soft);
+}
+.hover-lift:hover { transform: translateY(-3px); }
+
+/* Entrance animations for card grids and page sections */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.55s var(--ease-out-soft) both; }
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
+
+@keyframes fab-pulse {
+  0% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent); }
+  70% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 14px transparent; }
+  100% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 0 transparent; }
+}
+
+/* Respect reduced-motion preferences everywhere */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-fade-up,
+  .animate-float-slow,
+  .hover-lift { animation: none !important; transition: none !important; }
+}
 
 /* ==========================================================================
    QR scanner override — make the html5-qrcode library feel native

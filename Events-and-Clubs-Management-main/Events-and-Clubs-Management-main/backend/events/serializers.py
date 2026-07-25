@@ -1,5 +1,6 @@
 import base64
 import io
+from decimal import Decimal
 
 from rest_framework import serializers
 
@@ -8,6 +9,7 @@ try:
 except ImportError:
     qrcode = None
 
+from django.conf import settings
 from django.utils import timezone
 
 from .models import Event, EventApproval
@@ -36,6 +38,8 @@ class EventSerializer(serializers.ModelSerializer):
             'status',
             'venue',
             'max_participants',
+            'payment_required',
+            'fee',
             'event_date',
             'created_at',
         ]
@@ -60,6 +64,31 @@ class EventSerializer(serializers.ModelSerializer):
                 "Event date must be in the future. Please pick a later date and time."
             )
         return value
+
+    def validate(self, attrs):
+        """Keep payment settings consistent whether an event manager sets them
+        at proposal time or a HoD edits them later.
+
+        * fee can never be negative
+        * a paid event must carry a fee Khalti will accept (>= min amount)
+        """
+        # Fall back to the current instance's values on partial updates.
+        payment_required = attrs.get(
+            'payment_required',
+            getattr(self.instance, 'payment_required', False),
+        )
+        fee = attrs.get('fee', getattr(self.instance, 'fee', Decimal('0')))
+
+        if fee is not None and fee < 0:
+            raise serializers.ValidationError({'fee': 'Fee cannot be negative.'})
+
+        if payment_required:
+            min_npr = Decimal(str(settings.KHALTI_MIN_AMOUNT_PAISA / 100))
+            if fee is None or fee < min_npr:
+                raise serializers.ValidationError({
+                    'fee': f'A paid event needs a fee of at least NPR {min_npr:.0f}.'
+                })
+        return attrs
 
 
 class EventDiscoverySerializer(serializers.ModelSerializer):
@@ -90,6 +119,8 @@ class EventDiscoverySerializer(serializers.ModelSerializer):
             'status',
             'venue',
             'max_participants',
+            'payment_required',
+            'fee',
             'event_date',
             'created_at',
             'registration_count',

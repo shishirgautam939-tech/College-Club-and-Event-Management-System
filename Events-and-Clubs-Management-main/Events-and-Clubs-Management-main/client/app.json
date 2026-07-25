@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "client",
+    "slug": "client",
+    "version": "0.0.0",
+    "sdkVersion": "46.0.0",
+    "platforms": [],
+    "android": {
+      "package": "com.anonymous.client"
+    }
+  }
+}

@@ -1,7 +1,10 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Exists, OuterRef
 
@@ -232,4 +235,69 @@ class CompleteEventView(APIView):
             'event_id': event.id,
             'status': event.status,
             'certificates_issued': len(certificates),
+        })
+
+
+class EventPaymentSettingsView(APIView):
+    """
+    PATCH: enable/disable the payment requirement and set the fee for an event.
+    Only the faculty coordinator (HoD) of the club, or an admin, may change this.
+
+    Body: { "payment_required": true|false, "fee": <number, optional> }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id)
+
+        is_admin = request.user.is_staff or request.user.user_type == 'Admin'
+        is_coordinator = event.club and event.club.faculty_coordinator == request.user
+        if not is_admin and not is_coordinator:
+            return Response(
+                {'detail': 'You are not authorised to manage payments for this event.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        data = request.data
+        payment_required = data.get('payment_required', event.payment_required)
+        if isinstance(payment_required, str):
+            payment_required = payment_required.strip().lower() in ('true', '1', 'yes')
+        payment_required = bool(payment_required)
+
+        # Parse fee if provided; otherwise keep the existing value.
+        if 'fee' in data and data.get('fee') not in (None, ''):
+            try:
+                fee = Decimal(str(data.get('fee')))
+            except (InvalidOperation, ValueError, TypeError):
+                return Response(
+                    {'detail': 'Fee must be a valid number.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            fee = event.fee
+
+        if fee < 0:
+            return Response(
+                {'detail': 'Fee cannot be negative.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # When enabling payment, the fee must be high enough for Khalti to accept.
+        if payment_required:
+            min_npr = settings.KHALTI_MIN_AMOUNT_PAISA / 100
+            if fee < Decimal(str(min_npr)):
+                return Response(
+                    {'detail': f'To require payment, the fee must be at least NPR {min_npr:.0f}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        event.payment_required = payment_required
+        event.fee = fee
+        event.save(update_fields=['payment_required', 'fee'])
+
+        return Response({
+            'detail': 'Payment settings updated.',
+            'event_id': event.id,
+            'payment_required': event.payment_required,
+            'fee': str(event.fee),
         })

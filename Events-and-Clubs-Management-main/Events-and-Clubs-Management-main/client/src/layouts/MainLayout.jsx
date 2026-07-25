@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, Bookmark, ScanLine, Award, Plus, CheckSquare, LogOut, ShieldCheck } from "lucide-react";
+import { Calendar, Bookmark, ScanLine, Award, Plus, CheckSquare, LogOut, ShieldCheck, Wallet } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import Logo from "../components/Logo";
 import {
@@ -30,6 +30,7 @@ const studentNav = [
   { to: "/my-events", label: "My Events", icon: Bookmark },
   { to: "/scan-attendance", label: "Scan QR", icon: ScanLine },
   { to: "/my-certificates", label: "Certificates", icon: Award },
+  { to: "/my-payments", label: "Payments", icon: Wallet },
   { to: "/events/propose", label: "Propose", icon: Plus },
 ];
 
@@ -61,6 +62,7 @@ const getPageMeta = (pathname) => {
   if (pathname === "/my-events") return { title: "My events", meta: "Track registrations, attendance and certificates" };
   if (pathname === "/scan-attendance") return { title: "Check in with QR", meta: "Scan the code at the venue to mark attendance" };
   if (pathname === "/my-certificates") return { title: "My certificates", meta: "Download your participation certificates" };
+  if (pathname === "/my-payments") return { title: "My payments", meta: "Your event registration payments via Khalti" };
   if (pathname === "/events/propose") return { title: "Propose an event", meta: "Submit a proposal for your club to run" };
   if (pathname.startsWith("/faculty")) return { title: "Approvals", meta: "Review and manage event proposals" };
   return { title: "Evento", meta: "" };
@@ -131,18 +133,26 @@ const MainLayout = () => {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{pageMeta.title}</p>
+            {pageMeta.meta && (
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">{pageMeta.meta}</p>
+            )}
           </div>
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
+          <div className="ml-auto flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
             <span className="hidden sm:inline">Signed in as {user?.role}</span>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">
-          <Outlet />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

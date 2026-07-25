@@ -91,8 +91,12 @@ const MyCertificates = () => {
         </Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
-          {certificates.map((cert) => (
-            <Card key={cert.id} className="gap-4 p-5">
+          {certificates.map((cert, i) => (
+            <Card
+              key={cert.id}
+              className="hover-lift animate-fade-up gap-4 p-5 hover:shadow-soft-lg"
+              style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <StatusBadge tone="success">Ready to download</StatusBadge>
