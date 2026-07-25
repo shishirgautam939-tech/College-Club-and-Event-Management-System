@@ -20,6 +20,9 @@ import EventAttendance from "../pages/admin/EventAttendance";
 import ProposeEvent from "../pages/student/ProposeEvent";
 import EventDiscovery from "../pages/student/EventDiscovery";
 import MyEvents from "../pages/student/MyEvents";
+import MyPayments from "../pages/student/MyPayments";
+import MockCheckout from "../pages/student/MockCheckout";
+import PaymentCallback from "../pages/student/PaymentCallback";
 import ScanAttendance from "../pages/student/ScanAttendance";
 import MyCertificates from "../pages/student/MyCertificates";
 import FacultyEvents from "../pages/faculty/FacultyEvents";
@@ -69,6 +72,21 @@ const AppRoutes = () => {
         <Route path="/scan-attendance" element={
           <ProtectedRoute allowedRoles={["Student"]}>
             <ScanAttendance />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-payments" element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <MyPayments />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment/mock" element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <MockCheckout />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment/callback" element={
+          <ProtectedRoute allowedRoles={["Student"]}>
+            <PaymentCallback />
           </ProtectedRoute>
         } />
         <Route path="/my-certificates" element={

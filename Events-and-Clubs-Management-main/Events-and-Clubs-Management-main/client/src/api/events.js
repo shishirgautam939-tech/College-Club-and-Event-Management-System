@@ -22,3 +22,7 @@ export const getAllEvents = (statusFilter) => {
 // ── Complete an event ──
 export const completeEvent = (id) => api.post(`events/${id}/complete/`);
 
+// ── Faculty/HOD: enable/disable payment and set fee for an event ──
+export const updateEventPayment = (id, data) =>
+  api.patch(`events/${id}/payment-settings/`, data);
+

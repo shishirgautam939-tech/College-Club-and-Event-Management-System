@@ -1,7 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { getClubs, getClubMembers, addClubMember, removeClubMember } from "../../api/clubs";
 import { getAllUsers } from "../../api/users";
+import { TableAvatar, ActionButton, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+const POSITION_TONE = {
+  President: "accent",
+  "Vice President": "violet",
+  Secretary: "info",
+  Treasurer: "warning",
+  "Event Manager": "brand",
+  Member: "muted",
+};
 
 const Clubs = () => {
   const [clubs, setClubs] = useState([]);
@@ -11,6 +45,7 @@ const Clubs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
+  const [search, setSearch] = useState("");
   const location = useLocation();
 
   // Add member state
@@ -19,6 +54,7 @@ const Clubs = () => {
   const [newMemberUserId, setNewMemberUserId] = useState("");
   const [newMemberPosition, setNewMemberPosition] = useState("Member");
   const [addingMember, setAddingMember] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
     const fetchClubs = async () => {
@@ -69,6 +105,18 @@ const Clubs = () => {
     return clubs.find((club) => String(club.id) === String(selectedClubId)) || null;
   }, [clubs, selectedClubId]);
 
+  const searchedMembers = useMemo(() => {
+    if (!search.trim()) return members;
+    const q = search.toLowerCase();
+    return members.filter(
+      (m) =>
+        m.full_name.toLowerCase().includes(q) ||
+        (m.roll_number || "").toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q) ||
+        (m.position || "").toLowerCase().includes(q)
+    );
+  }, [members, search]);
+
   const handleShowAddMember = async () => {
     setShowAddMember(true);
     try {
@@ -105,8 +153,9 @@ const Clubs = () => {
     }
   };
 
-  const handleRemoveMember = async (memberId, memberName) => {
-    if (!confirm(`Remove ${memberName} from this club?`)) return;
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return;
+    const { id: memberId } = removeTarget;
     setActionMsg({ type: "", text: "" });
     try {
       await removeClubMember(selectedClubId, memberId);
@@ -117,201 +166,240 @@ const Clubs = () => {
         type: "error",
         text: err.response?.data?.detail || "Failed to remove member.",
       });
+    } finally {
+      setRemoveTarget(null);
     }
   };
 
-  if (loading) return <div className="p-4">Loading clubs...</div>;
-  if (error && clubs.length === 0) return <div className="p-4 text-red-600">{error}</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading clubs…</span>
+      </div>
+    );
+  }
+  if (error && clubs.length === 0) return <InlineAlert type="error">{error}</InlineAlert>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Club Management</h1>
-        <Link
-          to="/admin/clubs/create"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition shadow-sm text-sm"
-        >
-          Create Club
-        </Link>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow="Clubs"
+        title="Club management"
+        subtitle={`${clubs.length} clubs on campus · ${selectedClub ? `${members.length} members in this club` : "Pick a club to manage its members."}`}
+        actions={
+          <Button variant="secondary" className="gap-1.5" nativeButton={false} render={<Link to="/admin/clubs/create" />}>
+            <Plus className="size-4" /> Create club
+          </Button>
+        }
+      />
 
-      {actionMsg.text && (
-        <div
-          className={`p-3 rounded text-sm ${
-            actionMsg.type === "success"
-              ? "bg-green-50 text-green-600"
-              : "bg-red-50 text-red-600"
-          }`}
-        >
-          {actionMsg.text}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
+
+      {/* Club selector card */}
+      <Card className="p-5">
+        <div className="mb-2 flex items-center justify-between">
+          <Label>Select a club</Label>
+          {selectedClub && <StatusBadge tone="accent">{selectedClub.is_council ? "Council" : "Club"}</StatusBadge>}
         </div>
-      )}
-
-      <div className="bg-white border border-gray-200 p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Club</label>
-        <select
+        <Select
           value={selectedClubId}
-          onChange={(e) => {
-            setSelectedClubId(e.target.value);
+          onValueChange={(value) => {
+            setSelectedClubId(value);
             setShowAddMember(false);
+            setSearch("");
           }}
-          className="w-full md:w-96 border border-gray-300 px-3 py-2"
         >
-          <option value="">-- Choose a club --</option>
-          {clubs.map((club) => (
-            <option key={club.id} value={club.id}>
-              {club.club_name}
-              {club.is_council ? " (Council)" : ""}
-            </option>
-          ))}
-        </select>
-      </div>
+          <SelectTrigger className="h-10 w-full max-w-lg">
+            <SelectValue placeholder="— Choose a club —">
+              {() => (selectedClub ? `${selectedClub.club_name}${selectedClub.is_council ? " (Council)" : ""}` : "— Choose a club —")}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {clubs.map((club) => (
+              <SelectItem key={club.id} value={String(club.id)}>
+                {club.club_name}
+                {club.is_council ? " (Council)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {/* Club Info */}
-      {selectedClub && (
-        <div className="bg-white border border-gray-200 p-4 text-sm space-y-1">
-          <p>
-            <span className="font-medium text-gray-700">Club:</span>{" "}
-            {selectedClub.club_name}
-          </p>
-          {selectedClub.description && (
-            <p>
-              <span className="font-medium text-gray-700">Description:</span>{" "}
-              {selectedClub.description}
-            </p>
-          )}
-          <p>
-            <span className="font-medium text-gray-700">Faculty Coordinator:</span>{" "}
-            {selectedClub.faculty_coordinator_name || "—"}
-          </p>
-          <p>
-            <span className="font-medium text-gray-700">Type:</span>{" "}
-            {selectedClub.is_council ? "Council" : "Club"}
-          </p>
-        </div>
-      )}
+        {selectedClub && (
+          <div className="mt-4 rounded-xl border p-4">
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Faculty Coordinator</p>
+                <p className="mt-0.5 font-medium text-foreground">{selectedClub.faculty_coordinator_name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Type</p>
+                <p className="mt-0.5">
+                  <StatusBadge tone={selectedClub.is_council ? "violet" : "brand"}>
+                    {selectedClub.is_council ? "Council" : "Club"}
+                  </StatusBadge>
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Members</p>
+                <p className="mt-0.5 font-semibold text-foreground">{members.length}</p>
+              </div>
+              {selectedClub.description && (
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">About</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{selectedClub.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Members Table */}
-      <div className="overflow-x-auto border border-gray-200 bg-white">
-        <div className="px-4 py-3 border-b bg-gray-50 font-semibold text-gray-700 flex items-center justify-between">
-          <span>
-            {selectedClub ? `${selectedClub.club_name} Members` : "Club Members"}
+      <Card className="gap-0 p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <span className="text-sm font-semibold text-foreground">
+            {selectedClub ? `${selectedClub.club_name} members` : "Club members"}{" "}
+            <span className="font-normal text-muted-foreground">· {searchedMembers.length} of {members.length}</span>
           </span>
-          {selectedClubId && (
-            <button
-              onClick={handleShowAddMember}
-              className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 cursor-pointer"
-            >
-              + Add Member
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedClubId && (
+              <div className="relative w-64 max-w-full">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search members…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-9 pl-9"
+                />
+              </div>
+            )}
+            {selectedClubId && (
+              <Button className="gap-1.5" onClick={handleShowAddMember}>
+                <Plus className="size-4" /> Add member
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Add Member Form */}
         {showAddMember && selectedClubId && (
-          <div className="px-4 py-3 border-b border-gray-200 bg-indigo-50 flex items-end gap-3 flex-wrap">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Student</label>
-              <select
-                value={newMemberUserId}
-                onChange={(e) => setNewMemberUserId(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm w-64"
-              >
-                <option value="">Select a student...</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name} ({s.roll_number || s.email})
-                  </option>
-                ))}
-              </select>
+          <div className="flex flex-wrap items-end gap-3 border-b bg-primary/5 px-4 py-3">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Student</Label>
+              <Select value={newMemberUserId} onValueChange={setNewMemberUserId}>
+                <SelectTrigger className="h-9 w-64">
+                  <SelectValue placeholder="Select a student…">
+                    {() => {
+                      const s = students.find((st) => String(st.id) === newMemberUserId);
+                      return s ? `${s.full_name} (${s.roll_number || s.email})` : "Select a student…";
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.full_name} ({s.roll_number || s.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Position</label>
-              <select
-                value={newMemberPosition}
-                onChange={(e) => setNewMemberPosition(e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-              >
-                <option value="Member">Member</option>
-                <option value="Event Manager">Event Manager</option>
-                <option value="President">President</option>
-                <option value="Vice President">Vice President</option>
-                <option value="Secretary">Secretary</option>
-                <option value="Treasurer">Treasurer</option>
-              </select>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Position</Label>
+              <Select value={newMemberPosition} onValueChange={setNewMemberPosition}>
+                <SelectTrigger className="h-9 w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Member">Member</SelectItem>
+                  <SelectItem value="Event Manager">Event Manager</SelectItem>
+                  <SelectItem value="President">President</SelectItem>
+                  <SelectItem value="Vice President">Vice President</SelectItem>
+                  <SelectItem value="Secretary">Secretary</SelectItem>
+                  <SelectItem value="Treasurer">Treasurer</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <button
-              onClick={handleAddMember}
-              disabled={addingMember || !newMemberUserId}
-              className="px-4 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 cursor-pointer"
-            >
-              {addingMember ? "Adding..." : "Add"}
-            </button>
-            <button
-              onClick={() => setShowAddMember(false)}
-              className="px-4 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 cursor-pointer"
-            >
+            <Button onClick={handleAddMember} disabled={addingMember || !newMemberUserId}>
+              {addingMember ? "Adding…" : "Add"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddMember(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         )}
 
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left border-r">Full Name</th>
-              <th className="px-4 py-2 text-left border-r">Email</th>
-              <th className="px-4 py-2 text-left border-r">Roll Number</th>
-              <th className="px-4 py-2 text-left border-r">Designated Role</th>
-              <th className="px-4 py-2 text-left border-r">Joined At</th>
-              <th className="px-4 py-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {!selectedClubId && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Select a club to view members.
-                </td>
-              </tr>
-            )}
+        {!selectedClubId ? (
+          <TableEmpty title="No club selected" sub="Choose a club from the list above to manage its members." />
+        ) : membersLoading ? (
+          <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading members…
+          </div>
+        ) : searchedMembers.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Roll number</TableHead>
+                <TableHead>Designated role</TableHead>
+                <TableHead>Joined at</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchedMembers.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <TableAvatar name={member.full_name} tone="accent" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground">{member.full_name}</span>
+                        <span className="text-xs text-muted-foreground">Member</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                  <TableCell>
+                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{member.roll_number || "—"}</code>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={POSITION_TONE[member.position] || "muted"}>{member.position}</StatusBadge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{member.joined_at}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <ActionButton
+                        tone="danger"
+                        title="Remove member"
+                        onClick={() => setRemoveTarget(member)}
+                      >
+                        <Trash2 className="size-4" />
+                      </ActionButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <TableEmpty
+            title={search ? "No matches" : "No members yet"}
+            sub={search ? "Try a different search term." : "Add the first member to this club."}
+          />
+        )}
+      </Card>
 
-            {selectedClubId && membersLoading && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  Loading members...
-                </td>
-              </tr>
-            )}
-
-            {selectedClubId && !membersLoading && members.map((member) => (
-              <tr key={member.id}>
-                <td className="px-4 py-2 border-r">{member.full_name}</td>
-                <td className="px-4 py-2 border-r">{member.email}</td>
-                <td className="px-4 py-2 border-r">{member.roll_number || "-"}</td>
-                <td className="px-4 py-2 border-r">{member.position}</td>
-                <td className="px-4 py-2 border-r">{member.joined_at}</td>
-                <td className="px-4 py-2 text-center">
-                  <button
-                    onClick={() => handleRemoveMember(member.id, member.full_name)}
-                    className="text-red-600 hover:text-red-900 text-xs cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {selectedClubId && !membersLoading && members.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  No members found for this club.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+        title="Remove member?"
+        description={removeTarget ? `Remove ${removeTarget.full_name} from this club? This can't be undone.` : ""}
+        confirmLabel="Remove"
+        onConfirm={handleRemoveMember}
+      />
     </div>
   );
 };

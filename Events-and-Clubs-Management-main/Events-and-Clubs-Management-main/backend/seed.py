@@ -1,30 +1,39 @@
-import os, sys, django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
-sys.path.insert(0, os.path.dirname(__file__))
+import os
+import random
+import sys
+from datetime import timedelta
+from pathlib import Path
+
+import django
+
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 django.setup()
 
-import random
-from datetime import timedelta
+from django.db import transaction
+from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+
 from accounts.models import User
 from clubs.models import Club, ClubMember, Department
 from events.models import Event, EventApproval
-from participation.models import EventRegistration, Attendance
+from participation.models import Attendance, EventRegistration
 
-# ── Guard: skip if already seeded ──
-if User.objects.filter(user_type="Faculty").exists():
-    print("Database already seeded — skipping.")
-    sys.exit(0)
 
-# ── Departments ──
-dept_names = ["Computer Engineering", "Civil Engineering", "Electrical Engineering", "Electronics Engineering"]
-for name in dept_names:
-    Department.objects.get_or_create(department_name=name)
-depts = list(Department.objects.all())
-print(f"Departments: {[d.department_name for d in depts]}")
+random.seed(2026)
+PASSWORD_HASH_CACHE = {}
 
-# ── Faculty (16 faculty, 4 per dept) ──
-faculty_names = [
+DEPARTMENT_NAMES = [
+    "Computer Engineering",
+    "Civil Engineering",
+    "Electrical Engineering",
+    "Electronics Engineering",
+]
+
+FACULTY_DATA = [
     ("Dr. Ramesh Karki", "ramesh.karki@nce.edu"),
     ("Dr. Sita Sharma", "sita.sharma@nce.edu"),
     ("Dr. Binod Thapa", "binod.thapa@nce.edu"),
@@ -43,69 +52,14 @@ faculty_names = [
     ("Prof. Sarita Regmi", "sarita.regmi@nce.edu"),
 ]
 
-faculty_users = []
-for i, (name, email) in enumerate(faculty_names):
-    dept = depts[i % len(depts)]
-    u = User.objects.create_user(
-        email=email, password="faculty123",
-        full_name=name, user_type="Faculty",
-        department=dept
-    )
-    faculty_users.append(u)
-print(f"Created {len(faculty_users)} faculty members")
-
-# ── Students (80 students, 20 per branch) ──
-branches = ["BCT", "BCE", "BEE", "BEI"]
-first_names_m = [
-    "Aarav", "Bibek", "Chandan", "Deepak", "Eshan",
-    "Firoj", "Ganesh", "Hemant", "Ishan", "Jeevan",
-    "Kiran", "Laxman", "Manish", "Niraj", "Om",
-    "Pawan", "Rabindra", "Sagar", "Tara", "Ujjwal",
-]
-first_names_f = [
-    "Aasha", "Binita", "Chandani", "Diksha", "Elina",
-    "Fatima", "Ganga", "Hima", "Isha", "Jyoti",
-    "Kabita", "Lina", "Mina", "Nisha", "Pramila",
-    "Rashmi", "Sabina", "Trishna", "Uma", "Yamuna",
-]
-last_names = [
-    "Adhikari", "Bhandari", "Chand", "Devkota", "Ghimire",
-    "Karki", "Lama", "Magar", "Nepal", "Pandey",
-    "Rai", "Shrestha", "Tamang", "Thapa", "Gurung",
-    "Poudel", "Rijal", "Sapkota", "Subedi", "KC",
-]
-
-students = []
-for b_idx, branch in enumerate(branches):
-    names_pool = first_names_m if b_idx < 2 else first_names_f
-    for roll in range(1, 21):
-        fn = names_pool[(roll - 1) % len(names_pool)]
-        ln = last_names[(b_idx * 5 + roll) % len(last_names)]
-        full_name = f"{fn} {ln}"
-        roll_str = f"NCE078{branch}0{roll:02d}"
-        email = f"{fn.lower()}.{ln.lower()}.{branch.lower()}{roll:02d}@nce.edu"
-        u = User.objects.create_user(
-            email=email, password="student123",
-            full_name=full_name, user_type="Student",
-            branch=branch, roll_number=roll_str,
-        )
-        students.append(u)
-print(f"Created {len(students)} students")
-
-# ── Staff (4) ──
-staff_data = [
+STAFF_DATA = [
     ("Bishnu Prasad", "bishnu.prasad@nce.edu"),
     ("Durga Tamang", "durga.tamang@nce.edu"),
     ("Indra Bahadur", "indra.bahadur@nce.edu"),
     ("Kumari Basnet", "kumari.basnet@nce.edu"),
 ]
-for name, email in staff_data:
-    User.objects.create_user(email=email, password="staff123",
-                             full_name=name, user_type="Staff")
-print(f"Created {len(staff_data)} staff")
 
-# ── Clubs (8 clubs) ──
-club_defs = [
+CLUB_DATA = [
     ("NCE Robotics Club", "Building the future with autonomous robots and embedded systems.", False),
     ("NCE Coding Club", "Competitive programming, hackathons, and open-source contributions.", False),
     ("NCE Entrepreneurship Cell", "Fostering startup culture and innovation among students.", False),
@@ -116,36 +70,7 @@ club_defs = [
     ("NCE Student Council", "Official student governance and campus-wide coordination.", True),
 ]
 
-positions = ["President", "Vice President", "Event Manager", "Social Media Manager", "Graphics Designer"]
-clubs_created = []
-random.shuffle(students)
-assigned = set()
-
-for i, (cname, desc, is_council) in enumerate(club_defs):
-    coordinator = faculty_users[i % len(faculty_users)]
-    club = Club.objects.create(
-        club_name=cname, description=desc,
-        faculty_coordinator=coordinator, is_council=is_council,
-    )
-    clubs_created.append(club)
-
-    # 5 designated + 5 regular = 10 per club
-    club_students = []
-    for s in students:
-        if s.id not in assigned:
-            club_students.append(s)
-            assigned.add(s.id)
-            if len(club_students) == 10:
-                break
-
-    for j, s in enumerate(club_students):
-        pos = positions[j] if j < 5 else "Member"
-        ClubMember.objects.create(club=club, user=s, position=pos)
-
-print(f"Created {len(clubs_created)} clubs, {ClubMember.objects.count()} memberships")
-
-# ── Events (24) ──
-event_data = [
+EVENT_DATA = [
     ("Inter-College Robo Race", "Robotics competition with line-following and obstacle avoidance."),
     ("Hackathon 2026", "48-hour coding marathon to build innovative solutions."),
     ("Startup Pitch Night", "Students pitch their business ideas to a panel of judges."),
@@ -172,72 +97,300 @@ event_data = [
     ("Tech Expo 2026", "Exhibition of student projects and innovations."),
 ]
 
-statuses = (["Proposed"] * 6) + (["Approved"] * 8) + (["Completed"] * 7) + (["Rejected"] * 3)
-random.shuffle(statuses)
 
-venues = [
-    "Main Auditorium", "Seminar Hall A", "Seminar Hall B", "Open Ground",
-    "Computer Lab 1", "Computer Lab 2", "Library Hall", "Canteen Area",
-    "Block A Terrace", "Conference Room",
-]
+def env_value(name, default):
+    return os.getenv(name, default).strip()
 
-admin_user = User.objects.filter(user_type="Admin").first()
-now = timezone.now()
-events_created = []
 
-for i, (title, desc) in enumerate(event_data):
-    club = clubs_created[i % len(clubs_created)]
-    st = statuses[i % len(statuses)]
+def password_hash(password):
+    if password not in PASSWORD_HASH_CACHE:
+        PASSWORD_HASH_CACHE[password] = make_password(password)
+    return PASSWORD_HASH_CACHE[password]
 
-    if st == "Completed":
-        event_date = now - timedelta(days=random.randint(10, 90))
-    elif st == "Approved":
-        event_date = now + timedelta(days=random.randint(3, 60))
-    else:
-        event_date = now + timedelta(days=random.randint(1, 45))
 
-    evt = Event.objects.create(
-        title=title, description=desc,
-        organizer_type="Club", club=club,
-        created_by=admin_user, status=st,
-        venue=venues[i % len(venues)],
-        max_participants=random.choice([30, 50, 80, 100, None]),
-        event_date=event_date,
+def create_or_update_user(email, password, **fields):
+    user, created = User.objects.get_or_create(email=email, defaults=fields)
+    changed = created
+
+    for field, value in fields.items():
+        if getattr(user, field) != value:
+            setattr(user, field, value)
+            changed = True
+
+    if created and password:
+        user.password = password_hash(password)
+
+    if changed:
+        user.save()
+
+    return user, created
+
+
+def ensure_admin():
+    email = env_value("DJANGO_SUPERUSER_EMAIL", "admin@gmail.com")
+    password = env_value("DJANGO_SUPERUSER_PASSWORD", "admin")
+    full_name = env_value("DJANGO_SUPERUSER_FULL_NAME", "Site Admin")
+
+    admin, created = create_or_update_user(
+        email=email,
+        password=password,
+        full_name=full_name,
+        user_type="Admin",
+        is_staff=True,
+        is_superuser=True,
+        is_active=True,
     )
-    events_created.append(evt)
+    return admin, created
 
-    if st in ("Approved", "Completed", "Rejected"):
-        EventApproval.objects.create(
-            event=evt, approved_by=admin_user,
-            remarks="Reviewed and processed." if st != "Rejected" else "Does not meet criteria.",
-            decision="Approved" if st in ("Approved", "Completed") else "Rejected",
+
+def ensure_departments():
+    departments = []
+    for name in DEPARTMENT_NAMES:
+        department, _ = Department.objects.get_or_create(department_name=name)
+        departments.append(department)
+    return departments
+
+
+def ensure_faculty(departments):
+    faculty_users = []
+    for index, (name, email) in enumerate(FACULTY_DATA):
+        department = departments[index % len(departments)]
+        user, _ = create_or_update_user(
+            email=email,
+            password="faculty123",
+            full_name=name,
+            user_type="Faculty",
+            department=department,
+            branch=None,
+            roll_number=None,
+            is_active=True,
         )
+        faculty_users.append(user)
 
-print(f"Created {len(events_created)} events")
+    for index, department in enumerate(departments):
+        hod = faculty_users[index]
+        if department.hod_id != hod.id:
+            department.hod = hod
+            department.save(update_fields=["hod"])
 
-# ── Registrations & Attendance ──
-all_students = list(User.objects.filter(user_type="Student"))
-reg_count = 0
-att_count = 0
+    return faculty_users
 
-for evt in events_created:
-    if evt.status in ("Approved", "Completed"):
-        num_reg = random.randint(15, min(40, len(all_students)))
-        reg_students = random.sample(all_students, num_reg)
-        regs = [EventRegistration(event=evt, user=s) for s in reg_students]
-        EventRegistration.objects.bulk_create(regs, ignore_conflicts=True)
-        reg_count += len(regs)
 
-        if evt.status == "Completed":
-            atts = [Attendance(event=evt, user=s, present=(random.random() < 0.75)) for s in reg_students]
-            Attendance.objects.bulk_create(atts, ignore_conflicts=True)
-            att_count += len(atts)
+def ensure_students():
+    branches = ["BCT", "BCE", "BEE", "BEI"]
+    first_names_m = [
+        "Aarav", "Bibek", "Chandan", "Deepak", "Eshan",
+        "Firoj", "Ganesh", "Hemant", "Ishan", "Jeevan",
+        "Kiran", "Laxman", "Manish", "Niraj", "Om",
+        "Pawan", "Rabindra", "Sagar", "Tara", "Ujjwal",
+    ]
+    first_names_f = [
+        "Aasha", "Binita", "Chandani", "Diksha", "Elina",
+        "Fatima", "Ganga", "Hima", "Isha", "Jyoti",
+        "Kabita", "Lina", "Mina", "Nisha", "Pramila",
+        "Rashmi", "Sabina", "Trishna", "Uma", "Yamuna",
+    ]
+    last_names = [
+        "Adhikari", "Bhandari", "Chand", "Devkota", "Ghimire",
+        "Karki", "Lama", "Magar", "Nepal", "Pandey",
+        "Rai", "Shrestha", "Tamang", "Thapa", "Gurung",
+        "Poudel", "Rijal", "Sapkota", "Subedi", "KC",
+    ]
 
-print(f"Created {reg_count} registrations, {att_count} attendance records")
+    students = []
+    for branch_index, branch in enumerate(branches):
+        names_pool = first_names_m if branch_index < 2 else first_names_f
+        for roll in range(1, 21):
+            first_name = names_pool[(roll - 1) % len(names_pool)]
+            last_name = last_names[(branch_index * 5 + roll) % len(last_names)]
+            full_name = f"{first_name} {last_name}"
+            roll_number = f"NCE078{branch}0{roll:02d}"
+            email = f"{first_name.lower()}.{last_name.lower()}.{branch.lower()}{roll:02d}@nce.edu"
+            user, _ = create_or_update_user(
+                email=email,
+                password="student123",
+                full_name=full_name,
+                user_type="Student",
+                branch=branch,
+                roll_number=roll_number,
+                department=None,
+                is_active=True,
+            )
+            students.append(user)
 
-print("\n=== SEED COMPLETE ===")
-print(f"Users: {User.objects.count()}")
-print(f"  Admin={User.objects.filter(user_type='Admin').count()}, Faculty={User.objects.filter(user_type='Faculty').count()}, Students={User.objects.filter(user_type='Student').count()}, Staff={User.objects.filter(user_type='Staff').count()}")
-print(f"Clubs: {Club.objects.count()}, Members: {ClubMember.objects.count()}")
-print(f"Events: {Event.objects.count()} (Proposed={Event.objects.filter(status='Proposed').count()}, Approved={Event.objects.filter(status='Approved').count()}, Completed={Event.objects.filter(status='Completed').count()}, Rejected={Event.objects.filter(status='Rejected').count()})")
-print(f"Registrations: {EventRegistration.objects.count()}, Attendance: {Attendance.objects.count()}")
+    return students
+
+
+def ensure_staff():
+    staff_users = []
+    for name, email in STAFF_DATA:
+        user, _ = create_or_update_user(
+            email=email,
+            password="staff123",
+            full_name=name,
+            user_type="Staff",
+            department=None,
+            branch=None,
+            roll_number=None,
+            is_active=True,
+        )
+        staff_users.append(user)
+    return staff_users
+
+
+def ensure_clubs(faculty_users, students):
+    positions = ["President", "Vice President", "Event Manager", "Social Media Manager", "Graphics Designer"]
+    clubs = []
+    ordered_students = list(students)
+
+    for index, (club_name, description, is_council) in enumerate(CLUB_DATA):
+        club, _ = Club.objects.update_or_create(
+            club_name=club_name,
+            defaults={
+                "description": description,
+                "faculty_coordinator": faculty_users[index % len(faculty_users)],
+                "is_council": is_council,
+            },
+        )
+        clubs.append(club)
+
+        club_students = ordered_students[index * 10:(index + 1) * 10]
+        for member_index, student in enumerate(club_students):
+            position = positions[member_index] if member_index < len(positions) else "Member"
+            ClubMember.objects.update_or_create(
+                club=club,
+                user=student,
+                defaults={"position": position},
+            )
+
+    return clubs
+
+
+def event_date_for_status(status, now, index):
+    if status == "Completed":
+        return now - timedelta(days=10 + index * 3)
+    if status == "Approved":
+        return now + timedelta(days=3 + index * 2)
+    return now + timedelta(days=1 + index)
+
+
+def ensure_events(clubs, admin_user):
+    statuses = (["Proposed"] * 6) + (["Approved"] * 8) + (["Completed"] * 7) + (["Rejected"] * 3)
+    venues = [
+        "Main Auditorium", "Seminar Hall A", "Seminar Hall B", "Open Ground",
+        "Computer Lab 1", "Computer Lab 2", "Library Hall", "Canteen Area",
+        "Block A Terrace", "Conference Room",
+    ]
+    max_participant_options = [30, 50, 80, 100, None]
+    now = timezone.now()
+    events = []
+
+    for index, (title, description) in enumerate(EVENT_DATA):
+        status = statuses[index]
+        event, _ = Event.objects.update_or_create(
+            title=title,
+            defaults={
+                "description": description,
+                "organizer_type": "Club",
+                "club": clubs[index % len(clubs)],
+                "created_by": admin_user,
+                "status": status,
+                "venue": venues[index % len(venues)],
+                "max_participants": max_participant_options[index % len(max_participant_options)],
+                "event_date": event_date_for_status(status, now, index),
+            },
+        )
+        events.append(event)
+
+        if status in ("Approved", "Completed", "Rejected"):
+            EventApproval.objects.update_or_create(
+                event=event,
+                defaults={
+                    "approved_by": admin_user,
+                    "remarks": "Reviewed and processed." if status != "Rejected" else "Does not meet criteria.",
+                    "decision": "Approved" if status in ("Approved", "Completed") else "Rejected",
+                },
+            )
+        else:
+            EventApproval.objects.filter(event=event).delete()
+
+    return events
+
+
+def ensure_participation(events, students):
+    registrations_created = 0
+    attendance_created = 0
+
+    for event_index, event in enumerate(events):
+        if event.status not in ("Approved", "Completed"):
+            continue
+
+        participant_count = min(15 + (event_index % 26), len(students))
+        selected_students = students[:participant_count]
+
+        for student_index, student in enumerate(selected_students):
+            _, registration_created = EventRegistration.objects.get_or_create(event=event, user=student)
+            registrations_created += int(registration_created)
+
+            if event.status == "Completed":
+                _, attendance_created_now = Attendance.objects.update_or_create(
+                    event=event,
+                    user=student,
+                    defaults={
+                        "present": student_index % 4 != 0,
+                        "marked_via_qr": False,
+                    },
+                )
+                attendance_created += int(attendance_created_now)
+
+    return registrations_created, attendance_created
+
+
+def print_summary(admin_user, admin_created):
+    print("\n=== SEED COMPLETE ===")
+    print(f"Admin: {admin_user.email} ({'created' if admin_created else 'already existed'})")
+    print(f"Users: {User.objects.count()}")
+    print(
+        "  "
+        f"Admin={User.objects.filter(user_type='Admin').count()}, "
+        f"Faculty={User.objects.filter(user_type='Faculty').count()}, "
+        f"Students={User.objects.filter(user_type='Student').count()}, "
+        f"Staff={User.objects.filter(user_type='Staff').count()}"
+    )
+    print(f"Departments: {Department.objects.count()}")
+    print(f"Clubs: {Club.objects.count()}, Members: {ClubMember.objects.count()}")
+    print(
+        "Events: "
+        f"{Event.objects.count()} "
+        f"(Proposed={Event.objects.filter(status='Proposed').count()}, "
+        f"Approved={Event.objects.filter(status='Approved').count()}, "
+        f"Completed={Event.objects.filter(status='Completed').count()}, "
+        f"Rejected={Event.objects.filter(status='Rejected').count()})"
+    )
+    print(f"Registrations: {EventRegistration.objects.count()}, Attendance: {Attendance.objects.count()}")
+
+
+def main():
+    with transaction.atomic():
+        admin_user, admin_created = ensure_admin()
+        departments = ensure_departments()
+        faculty_users = ensure_faculty(departments)
+        students = ensure_students()
+        ensure_staff()
+        clubs = ensure_clubs(faculty_users, students)
+        events = ensure_events(clubs, admin_user)
+        registrations_created, attendance_created = ensure_participation(events, students)
+
+    print(f"Departments ready: {len(DEPARTMENT_NAMES)}")
+    print(f"Faculty ready: {len(FACULTY_DATA)}")
+    print(f"Students ready: {len(students)}")
+    print(f"Staff ready: {len(STAFF_DATA)}")
+    print(f"Clubs ready: {len(CLUB_DATA)}")
+    print(f"Events ready: {len(EVENT_DATA)}")
+    print(f"New registrations created this run: {registrations_created}")
+    print(f"New attendance records created this run: {attendance_created}")
+    print_summary(admin_user, admin_created)
+
+
+if __name__ == "__main__":
+    main()

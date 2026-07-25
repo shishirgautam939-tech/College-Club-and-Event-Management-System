@@ -9,9 +9,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
-from events.models import Event
+from events.models import Event, EventApproval
 from clubs.models import Club, ClubMember, Department
 from participation.models import EventRegistration
+from django.db import models
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -79,6 +80,68 @@ class DashboardStatsView(APIView):
         approved_events = Event.objects.filter(status='Approved').count()
         completed_events = Event.objects.filter(status='Completed').count()
         total_registrations = EventRegistration.objects.count()
+        total_departments = Department.objects.count()
+
+        # Per-branch student counts, in a fixed display order (drives the
+        # mobile "Branch Distribution" grid). Branches with zero students
+        # still appear, at 0, so the grid layout never loses a column.
+        branch_counts = dict(
+            User.objects.filter(user_type='Student', branch__isnull=False)
+            .values_list('branch')
+            .annotate(count=models.Count('id'))
+        )
+        branch_breakdown = [
+            {'branch': code, 'label': label, 'count': branch_counts.get(code, 0)}
+            for code, label in User.BRANCH_CHOICES
+        ]
+
+        # A club counts as "pending approval" if it has at least one event
+        # still awaiting admin review. There's no separate club-approval
+        # workflow in the data model, so this is the closest real signal.
+        clubs_pending_approval = (
+            Club.objects.filter(event__status='Proposed').distinct().count()
+        )
+
+        # Recent activity feed: merge the three event types the mobile
+        # dashboard shows (proposal submitted, event approved, new student)
+        # into one timeline, newest first.
+        activity_items = []
+
+        for event in Event.objects.select_related('club', 'created_by').order_by('-created_at')[:5]:
+            submitter = event.club.club_name if event.club else event.created_by.full_name
+            activity_items.append({
+                'type': 'event_submitted',
+                'message': f"{submitter} submitted ‘{event.title}’",
+                'timestamp': event.created_at,
+                'tone': 'success',
+            })
+
+        for approval in (
+            EventApproval.objects.filter(decision='Approved')
+            .select_related('event', 'approved_by')
+            .order_by('-approved_at')[:5]
+        ):
+            approver = approval.approved_by.full_name if approval.approved_by else 'Admin'
+            activity_items.append({
+                'type': 'event_approved',
+                'message': f"{approver} approved ‘{approval.event.title}’ event",
+                'timestamp': approval.approved_at,
+                'tone': 'info',
+            })
+
+        for student in User.objects.filter(user_type='Student').order_by('-created_at')[:5]:
+            activity_items.append({
+                'type': 'student_registered',
+                'message': f"New student {student.full_name} registered",
+                'timestamp': student.created_at,
+                'tone': 'neutral',
+            })
+
+        activity_items.sort(key=lambda item: item['timestamp'], reverse=True)
+        recent_activity = [
+            {**item, 'timestamp': item['timestamp'].isoformat()}
+            for item in activity_items[:8]
+        ]
 
         return Response({
             'total_users': total_users,
@@ -90,5 +153,9 @@ class DashboardStatsView(APIView):
             'approved_events': approved_events,
             'completed_events': completed_events,
             'total_registrations': total_registrations,
+            'total_departments': total_departments,
+            'branch_breakdown': branch_breakdown,
+            'clubs_pending_approval': clubs_pending_approval,
+            'recent_activity': recent_activity,
         })
     

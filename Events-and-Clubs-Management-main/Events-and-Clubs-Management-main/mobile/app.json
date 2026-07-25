@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Evento",
+    "slug": "evento-mobile",
+    "scheme": "evento",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FDFBF7",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.evento.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Evento uses your camera to scan event attendance QR codes."
+      }
+    },
+    "android": {
+      "package": "com.evento.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["CAMERA"],
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Evento uses your camera to scan event attendance QR codes.",
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ]
+  }
+}

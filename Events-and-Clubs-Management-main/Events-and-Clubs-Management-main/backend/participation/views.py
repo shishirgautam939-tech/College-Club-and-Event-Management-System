@@ -1,10 +1,8 @@
 import base64
 import io
-import json
 
-import qrcode
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import FileResponse
@@ -19,13 +17,22 @@ from .serializers import (
 )
 from .utils import (
     activate_event_qr,
+    build_qr_payload,
     can_manage_event_attendance,
     deactivate_event_qr,
+    decode_qr_payload,
+    ensure_event_qr_active,
     issue_certificate_for_attendee,
     issue_certificates_for_event,
+    is_event_qr_active,
     verify_qr_token,
 )
 from events.models import Event
+
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 
 # ─── Event Registration ────────────────────────────────────────────
@@ -68,7 +75,32 @@ class RegisterForEventView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Paid events must be registered through the payment flow: a
+        # registration is only created after a completed Khalti payment.
+        # Reject direct registration here so the requirement can't be bypassed.
+        if event.payment_required:
+            from payments.models import PaymentTransaction
+            has_paid = PaymentTransaction.objects.filter(
+                event=event, user=user,
+                status=PaymentTransaction.STATUS_COMPLETED,
+            ).exists()
+            if not has_paid:
+                return Response(
+                    {
+                        'detail': 'This event requires payment. Please complete the payment to register.',
+                        'payment_required': True,
+                        'fee': str(event.fee),
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+
         registration = EventRegistration.objects.create(event=event, user=user)
+
+        # Make sure the student has a usable attendance QR the moment they
+        # register, so /dashboard can render the "Show my QR" button without
+        # waiting for a coordinator to activate it. No-op if a token is live.
+        ensure_event_qr_active(event)
+
         return Response(
             {
                 'detail': 'Successfully registered for the event.',
@@ -120,6 +152,16 @@ class MyRegistrationsView(generics.ListAPIView):
             .filter(user=self.request.user)
             .order_by('-event__event_date')
         )
+
+    def list(self, request, *args, **kwargs):
+        # Lazy QR activation: a student who registered last week and visits
+        # /my-events again should see a live QR without re-registering.
+        # Only Approved events get a token; Completed events keep their
+        # archived token (and the frontend hides the button).
+        for reg in self.get_queryset():
+            if reg.event.status == 'Approved':
+                ensure_event_qr_active(reg.event)
+        return super().list(request, *args, **kwargs)
 
 
 # ─── Event Participants ────────────────────────────────────────────
@@ -297,40 +339,44 @@ class EventQRAttendanceView(APIView):
 
     def get(self, request, event_id):
         event = get_object_or_404(Event, pk=event_id)
-        if not can_manage_event_attendance(request.user, event):
-            return Response(
-                {'detail': 'You do not have permission to manage QR attendance.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        user = request.user
+        can_view_qr = can_manage_event_attendance(user, event)
+        if not can_view_qr:
+            if user.user_type != 'Student':
+                return Response(
+                    {'detail': 'You do not have permission to view QR attendance.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if not EventRegistration.objects.filter(event=event, user=user).exists():
+                return Response(
+                    {'detail': 'You must be registered for this event to view its QR code.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
-        payload = {
-            'event_id': event.id,
-            'token': event.attendance_qr_token,
-            'active': event.attendance_qr_active,
-            'expires_at': event.attendance_qr_expires_at.isoformat() if event.attendance_qr_expires_at else None,
-        }
-
+        is_active = is_event_qr_active(event)
+        qr_payload_str = None
         qr_image = None
-        if event.attendance_qr_active and event.attendance_qr_token:
-            qr_data = json.dumps({
-                'event_id': event.id,
-                'token': event.attendance_qr_token,
-            })
-            qr = qrcode.QRCode(version=1, box_size=8, border=2)
-            qr.add_data(qr_data)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color='#2F5233', back_color='white')
-            buffer = io.BytesIO()
-            img.save(buffer, format='PNG')
-            qr_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        if is_active and event.attendance_qr_token:
+            qr_payload_str = build_qr_payload(event.id, event.attendance_qr_token)
+            
+            if qrcode:
+                qr = qrcode.QRCode(version=1, box_size=8, border=2)
+                qr.add_data(qr_payload_str)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color='#2F5233', back_color='white')
+                buffer = io.BytesIO()
+                img.save(buffer, format='PNG')
+                qr_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
         return Response({
             'event_id': event.id,
             'event_title': event.title,
-            'qr_active': event.attendance_qr_active,
-            'expires_at': payload['expires_at'],
-            'qr_payload': payload,
+            'qr_active': is_active,
+            'expires_at': event.attendance_qr_expires_at.isoformat() if event.attendance_qr_expires_at else None,
+            'qr_payload': qr_payload_str,
             'qr_image_base64': qr_image,
+            'can_scan': is_active and bool(event.attendance_qr_token),
         })
 
     def post(self, request, event_id):
@@ -381,10 +427,19 @@ class VerifyQRAttendanceView(APIView):
         event_id = request.data.get('event_id')
         token = request.data.get('token')
         if not event_id or not token:
-            return Response(
-                {'detail': 'Both event_id and token are required.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            payload_text = request.data.get('payload') or request.data.get('qr_data')
+            if payload_text:
+                try:
+                    payload = decode_qr_payload(payload_text)
+                except ValueError as exc:
+                    return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+                event_id = payload['event_id']
+                token = payload['token']
+            else:
+                return Response(
+                    {'detail': 'Both event_id and token are required.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         event = get_object_or_404(Event, pk=event_id)
         valid, message = verify_qr_token(event, token)
@@ -420,10 +475,18 @@ class MyCertificatesView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
+        for registration in (
+            EventRegistration.objects
+            .filter(user=user, event__status='Completed')
+            .select_related('event')
+        ):
+            issue_certificate_for_attendee(registration.event, user)
+
         return (
             Certificate.objects
             .select_related('event', 'event__club')
-            .filter(user=self.request.user)
+            .filter(user=user)
             .order_by('-issued_at')
         )
 
@@ -509,28 +572,104 @@ class DownloadMyEventCertificateView(APIView):
 
     def get(self, request, event_id):
         event = get_object_or_404(Event, pk=event_id)
-        certificate = Certificate.objects.filter(event=event, user=request.user).first()
-        if not certificate:
-            attendance = Attendance.objects.filter(event=event, user=request.user, present=True).first()
-            if not attendance:
-                return Response(
-                    {'detail': 'No certificate available. Attendance must be marked present first.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-            if event.status != 'Completed':
-                return Response(
-                    {'detail': 'Certificates are issued after the event is completed.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            certificate = issue_certificate_for_attendee(event, request.user)
+        user = request.user
+        if not user or getattr(user, 'is_authenticated', False) is False:
+            return Response(
+                {'detail': 'Authentication required.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
-        if not certificate.pdf_file:
-            issue_certificate_for_attendee(event, request.user)
+        is_registered = EventRegistration.objects.filter(event=event, user=user).exists()
+        has_present_attendance = Attendance.objects.filter(event=event, user=user, present=True).exists()
+
+        if not is_registered and not has_present_attendance:
+            return Response(
+                {'detail': 'You are not registered for this event.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if event.status != 'Completed' and not has_present_attendance:
+            return Response(
+                {'detail': 'Certificates are issued after the event is completed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        certificate = Certificate.objects.filter(event=event, user=user).first()
+        if not certificate:
+            certificate = issue_certificate_for_attendee(event, user)
+        elif not certificate.pdf_file:
+            certificate = issue_certificate_for_attendee(event, user)
+
+        if not certificate:
+            return Response(
+                {'detail': 'No certificate available yet.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not certificate.pdf_file or not certificate.pdf_file.name:
+            certificate = issue_certificate_for_attendee(event, user)
+            if not certificate or not certificate.pdf_file or not certificate.pdf_file.name:
+                return Response(
+                    {'detail': 'Certificate could not be generated.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        try:
+            certificate.refresh_from_db()
+            return FileResponse(
+                certificate.pdf_file.open('rb'),
+                as_attachment=True,
+                filename=f'certificate_{event.title.replace(" ", "_")}.pdf',
+                content_type='application/pdf',
+            )
+        except FileNotFoundError:
+            return Response(
+                {'detail': 'Certificate file missing on disk.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as exc:
+            return Response(
+                {'detail': f'Error serving certificate: {str(exc)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DownloadCertificateByCodeView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, certificate_code):
+        certificate = get_object_or_404(
+            Certificate.objects.select_related('event', 'user'),
+            certificate_code=certificate_code,
+        )
+
+        # If there is no stored PDF, attempt to (re)generate it.
+        needs_generation = not certificate.pdf_file or not certificate.pdf_file.name
+        if not needs_generation:
+            try:
+                exists = certificate.pdf_file.storage.exists(certificate.pdf_file.name)
+            except Exception:
+                exists = False
+            if not exists:
+                needs_generation = True
+
+        if needs_generation:
+            issue_certificate_for_attendee(certificate.event, certificate.user)
             certificate.refresh_from_db()
 
-        return FileResponse(
-            certificate.pdf_file.open('rb'),
-            as_attachment=True,
-            filename=f'certificate_{event.title.replace(" ", "_")}.pdf',
-            content_type='application/pdf',
-        )
+        # Final existence check before attempting to open the file
+        if not certificate.pdf_file or not certificate.pdf_file.name:
+            return Response({'detail': 'Certificate file not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            file_name = f'certificate_{certificate.event.title.replace(" ", "_")}.pdf'
+            return FileResponse(
+                certificate.pdf_file.open('rb'),
+                as_attachment=True,
+                filename=file_name,
+                content_type='application/pdf',
+            )
+        except FileNotFoundError:
+            return Response({'detail': 'Certificate file missing on disk.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as exc:
+            return Response({'detail': f'Error serving certificate: {str(exc)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

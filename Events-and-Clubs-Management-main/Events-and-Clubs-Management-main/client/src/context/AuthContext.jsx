@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
             name: decoded.full_name,
           });
         }
-      } catch (error) {
+      } catch {
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
       }
@@ -34,22 +34,37 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (identifier, password) => {
-    const res = await api.post("login/", { email: identifier.trim(), password });
-    localStorage.setItem("token", res.data.access);
-    if (res.data.refresh) {
-      localStorage.setItem("refreshToken", res.data.refresh);
+    const trimmedIdentifier = typeof identifier === "string" ? identifier.trim() : "";
+
+    try {
+      const res = await api.post("login/", { email: trimmedIdentifier, password });
+      const accessToken = res?.data?.access;
+      if (!accessToken) {
+        throw new Error("Login response did not include an access token.");
+      }
+
+      localStorage.setItem("token", accessToken);
+      if (res.data.refresh) {
+        localStorage.setItem("refreshToken", res.data.refresh);
+      } else {
+        localStorage.removeItem("refreshToken");
+      }
+
+      const role = res.data.user_type || "Student";
+      const name = res.data.full_name || "";
+      const userId = res.data.id ?? null;
+
+      setUser({
+        user_id: userId,
+        role,
+        name,
+      });
+      return role;
+    } catch (error) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      throw error;
     }
-
-    const role = res.data.user_type;
-    const name = res.data.full_name;
-    const userId = res.data.id;
-
-    setUser({
-      user_id: userId,
-      role,
-      name,
-    });
-    return role;
   };
 
   const logout = () => {

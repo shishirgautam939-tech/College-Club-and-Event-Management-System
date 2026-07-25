@@ -27,6 +27,19 @@ class Event(models.Model):
         help_text='Maximum number of participants. Leave blank for unlimited.'
     )
 
+    # ─── Payment (Khalti) ───────────────────────────────────────────
+    # Controlled by the faculty coordinator / HoD. When payment_required is
+    # True, students must complete a Khalti payment of `fee` rupees before a
+    # registration record is created for them.
+    payment_required = models.BooleanField(
+        default=False,
+        help_text='If enabled, students must pay the fee before registering.'
+    )
+    fee = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='Registration fee in NPR. Only charged when payment is required.'
+    )
+
     event_date = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { Check, Loader2, Search, Ticket, Users, X } from "lucide-react";
 import {
   getEventAttendance,
   markAttendance,
@@ -9,10 +10,26 @@ import {
   generateEventCertificates,
 } from "../../api/participation";
 import { completeEvent } from "../../api/events";
+import { TableAvatar, TableEmpty } from "../../components/TableBits";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const EventAttendance = () => {
   const { eventId } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("manual");
   const [eventInfo, setEventInfo] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -22,21 +39,26 @@ const EventAttendance = () => {
   const [saving, setSaving] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchAttendance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   const fetchAttendance = async () => {
+    setLoading(true);
+    setError("");
     try {
       const res = await getEventAttendance(eventId);
+      const nextParticipants = Array.isArray(res.data.participants) ? res.data.participants : [];
       setEventInfo({
         event_id: res.data.event_id,
         event_title: res.data.event_title,
         event_status: res.data.event_status,
       });
       setParticipants(
-        res.data.participants.map((p) => ({
+        nextParticipants.map((p) => ({
           ...p,
           present: p.present ?? false,
         })),
@@ -64,8 +86,36 @@ const EventAttendance = () => {
   };
 
   useEffect(() => {
-    if (activeTab === "qr") fetchQR();
+    if (activeTab === "qr") {
+      fetchQR();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, eventId]);
+
+  useEffect(() => {
+    if (activeTab !== "qr" || eventInfo?.event_status !== "Approved") return;
+    if (qrLoading || qrData?.qr_active) return;
+    handleActivateQR();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, eventInfo?.event_status, qrData?.qr_active, qrLoading]);
+
+  const filteredParticipants = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return participants;
+
+    return participants.filter((participant) => {
+      const haystack = [
+        participant.user_name,
+        participant.user_email,
+        participant.roll_number,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [participants, search]);
 
   const togglePresent = (userId) => {
     setParticipants((prev) =>
@@ -168,178 +218,186 @@ const EventAttendance = () => {
     }
   };
 
-  if (loading) return <p className="text-stone-500">Loading attendance...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading attendance…</span>
+      </div>
+    );
+  }
 
   if (error) {
-    return <div className="alert alert-error">{error}</div>;
+    return <InlineAlert type="error">{error}</InlineAlert>;
   }
 
   const presentCount = participants.filter((p) => p.present).length;
+  const presentPct = participants.length > 0
+    ? Math.round((presentCount / participants.length) * 100)
+    : 0;
 
   return (
-    <div className="page-shell space-y-6">
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-sm text-brand-700 hover:text-brand-900 mb-2 inline-flex items-center gap-1"
-        >
-          ← Back
-        </button>
-        <h1 className="page-title">Attendance — {eventInfo?.event_title}</h1>
-        <p className="page-subtitle">
-          {presentCount} of {participants.length} marked present · Status: {eventInfo?.event_status}
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={`Attendance · ${eventInfo?.event_status}`}
+        title={eventInfo?.event_title}
+        subtitle={`${presentCount} of ${participants.length} marked present · ${presentPct}% attendance`}
+        actions={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+              <Check className="size-3.5" /> <strong>{presentCount}</strong> present
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white">
+              <Users className="size-3.5" /> <strong>{participants.length}</strong> registered
+            </span>
+          </>
+        }
+      />
 
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionMsg.text}
-        </div>
-      )}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("manual")}
-          className={activeTab === "manual" ? "tab-btn-active" : "tab-btn"}
-        >
-          Manual list
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("qr")}
-          className={activeTab === "qr" ? "tab-btn-active" : "tab-btn"}
-        >
-          QR check-in
-        </button>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="manual">Manual list</TabsTrigger>
+          <TabsTrigger value="qr">QR check-in</TabsTrigger>
+        </TabsList>
 
-      {eventInfo?.event_status === "Approved" && (
-        <div className="card p-4 flex flex-wrap gap-3 items-center justify-between">
-          <p className="text-sm text-stone-600">
-            When the event ends, mark it complete to issue certificates to attendees.
-          </p>
-          <button type="button" onClick={handleCompleteEvent} className="btn-primary">
-            Complete event & issue certificates
-          </button>
-        </div>
-      )}
+        {eventInfo?.event_status === "Approved" && (
+          <Card className="mt-4 flex flex-row flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-muted-foreground">
+              When the event ends, mark it complete to issue certificates to attendees.
+            </p>
+            <Button onClick={handleCompleteEvent}>Complete event &amp; issue certificates</Button>
+          </Card>
+        )}
 
-      {eventInfo?.event_status === "Completed" && (
-        <div className="card p-4 flex flex-wrap gap-3 items-center justify-between">
-          <p className="text-sm text-stone-600">
-            Regenerate certificates for all present attendees if needed.
-          </p>
-          <button type="button" onClick={handleGenerateCertificates} className="btn-secondary">
-            Regenerate certificates
-          </button>
-        </div>
-      )}
+        {eventInfo?.event_status === "Completed" && (
+          <Card className="mt-4 flex flex-row flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-muted-foreground">Regenerate certificates for all present attendees if needed.</p>
+            <Button variant="outline" onClick={handleGenerateCertificates}>Regenerate certificates</Button>
+          </Card>
+        )}
 
-      {activeTab === "manual" && (
-        <>
-          {participants.length === 0 ? (
-            <div className="card p-8 text-center">
-              <p className="text-stone-500">No students have registered for this event yet.</p>
-            </div>
-          ) : (
-            <div className="card overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-stone-100 bg-cream-100">
-                <div className="flex gap-2">
-                  <button type="button" onClick={markAllPresent} className="chip chip-success">
-                    Mark all present
-                  </button>
-                  <button type="button" onClick={markAllAbsent} className="chip chip-muted">
-                    Mark all absent
-                  </button>
+        <TabsContent value="manual" className="mt-4">
+          <Card className="gap-0 p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                Attendees <span className="font-normal text-muted-foreground">· {filteredParticipants.length} of {participants.length}</span>
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-56 max-w-full">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search name, roll, email…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 pl-9"
+                  />
                 </div>
-                <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
-                  {saving ? "Saving..." : "Save attendance"}
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Student</th>
-                      <th>Roll No.</th>
-                      <th>Email</th>
-                      <th className="text-center">Present</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((p, idx) => (
-                      <tr key={p.user_id} className={p.present ? "row-present" : ""}>
-                        <td className="text-stone-400">{idx + 1}</td>
-                        <td className="font-medium">{p.user_name}</td>
-                        <td>{p.roll_number || "—"}</td>
-                        <td>{p.user_email}</td>
-                        <td className="text-center">
-                          <input
-                            type="checkbox"
-                            checked={p.present}
-                            onChange={() => togglePresent(p.user_id)}
-                            className="w-5 h-5 accent-brand-700"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 text-emerald-700 hover:text-emerald-700" onClick={markAllPresent}>
+                  <Check className="size-3.5" /> Mark all present
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={markAllAbsent}>
+                  <X className="size-3.5" /> Mark all absent
+                </Button>
+                <Button type="button" size="sm" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save attendance"}
+                </Button>
               </div>
             </div>
-          )}
-        </>
-      )}
 
-      {activeTab === "qr" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-stone-800">Display this at the venue</h2>
-            <p className="text-sm text-stone-500">
+            {participants.length === 0 ? (
+              <TableEmpty icon={<Ticket className="size-5" />} title="No registrations yet" sub="Students will appear here once they register for the event." />
+            ) : filteredParticipants.length === 0 ? (
+              <TableEmpty title="No matches" sub="Try a different search term." />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Roll no.</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-center">Present</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredParticipants.map((p, idx) => (
+                    <TableRow key={p.user_id} className={p.present ? "bg-emerald-50/60" : undefined}>
+                      <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <TableAvatar name={p.user_name} tone={p.present ? "brand" : "muted"} />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{p.user_name}</span>
+                            <span className="text-xs text-muted-foreground">{p.present ? "Present" : "Not yet checked in"}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{p.roll_number || "—"}</code>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{p.user_email}</TableCell>
+                      <TableCell className="text-center">
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <Checkbox checked={p.present} onCheckedChange={() => togglePresent(p.user_id)} />
+                          <StatusBadge tone={p.present ? "success" : "muted"}>{p.present ? "Present" : "Absent"}</StatusBadge>
+                        </label>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="qr" className="mt-4 grid gap-5 lg:grid-cols-2">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-foreground">Display this at the venue</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Students scan the code with their phone to check in. Only registered students can verify.
             </p>
 
             {qrLoading ? (
-              <p className="text-stone-500">Loading QR...</p>
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Loading QR...
+              </div>
             ) : qrData?.qr_active && qrData?.qr_image_base64 ? (
-              <div className="flex flex-col items-center gap-4">
+              <div className="mt-4 flex flex-col items-center gap-4">
                 <img
                   src={`data:image/png;base64,${qrData.qr_image_base64}`}
                   alt="Event attendance QR code"
-                  className="w-64 h-64 rounded-2xl border border-stone-200 p-3 bg-white"
+                  className="size-64 rounded-xl border bg-white p-3"
                 />
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-muted-foreground">
                   Expires: {qrData.expires_at ? new Date(qrData.expires_at).toLocaleString() : "—"}
                 </p>
-                <button type="button" onClick={handleDeactivateQR} className="btn-secondary">
+                <Button variant="outline" onClick={handleDeactivateQR}>
                   Turn off QR check-in
-                </button>
+                </Button>
               </div>
             ) : (
-              <div className="text-center py-8 space-y-4">
-                <p className="text-stone-500">QR check-in is not active yet.</p>
-                <button type="button" onClick={handleActivateQR} className="btn-primary">
-                  Start QR check-in
-                </button>
+              <div className="mt-4 flex flex-col items-center gap-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">QR check-in is not active yet.</p>
+                <Button onClick={handleActivateQR}>Start QR check-in</Button>
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="card p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-stone-800">How it works</h2>
-            <ol className="list-decimal list-inside text-sm text-stone-600 space-y-2">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-foreground">How it works</h2>
+            <ol className="mt-3 list-inside list-decimal space-y-2 text-sm text-muted-foreground">
               <li>Start QR check-in when the event begins.</li>
               <li>Display the code on a screen or print it at the entrance.</li>
               <li>Students open Scan QR from the menu and point their camera.</li>
               <li>Attendance is recorded instantly for registered participants.</li>
               <li>Complete the event when finished to send certificates.</li>
             </ol>
-          </div>
-        </div>
-      )}
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Bookmark, Loader2, ScanLine } from "lucide-react";
 import {
   getMyRegistrations,
   unregisterFromEvent,
@@ -7,6 +8,12 @@ import {
 } from "../../api/participation";
 import { saveBlobAsFile } from "../../utils/downloadFile";
 import { formatDateTime } from "../../utils/formatDate";
+import EventQRModal from "../../components/EventQRModal";
+import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const MyEvents = () => {
   const [registrations, setRegistrations] = useState([]);
@@ -15,7 +22,7 @@ const MyEvents = () => {
   const [actionMsg, setActionMsg] = useState({ type: "", text: "" });
   const [actionInProgress, setActionInProgress] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
-
+  const [qrEvent, setQrEvent] = useState(null);
   useEffect(() => {
     fetchRegistrations();
   }, []);
@@ -69,104 +76,132 @@ const MyEvents = () => {
   const upcoming = registrations.filter((r) => r.event_status === "Approved");
   const completed = registrations.filter((r) => r.event_status === "Completed");
 
-  if (loading) return <p className="text-stone-500">Loading your events...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading your events…</span>
+      </div>
+    );
+  }
 
   const attendanceBadge = (status) => {
-    if (status === "Present") return <span className="badge badge-success">Present</span>;
-    if (status === "Absent") return <span className="badge bg-red-50 text-red-700">Absent</span>;
-    return <span className="badge badge-muted">Not marked</span>;
+    if (status === "Present") return <StatusBadge tone="success">Present</StatusBadge>;
+    if (status === "Absent") return <StatusBadge tone="danger">Absent</StatusBadge>;
+    return <StatusBadge tone="muted">Not marked</StatusBadge>;
   };
 
   return (
-    <div className="page-shell">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="page-title">My Events</h1>
-          <p className="page-subtitle">Events you&apos;ve signed up for, your check-ins, and certificates.</p>
-        </div>
-        <Link to="/scan-attendance" className="btn-primary">
-          Scan QR to check in
-        </Link>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow={<><Bookmark className="size-3.5" /> Your registrations</>}
+        title="My events"
+        subtitle="Track your registrations, attendance, and certificates in one place."
+        actions={
+          <Button variant="secondary" className="gap-2" nativeButton={false} render={<Link to="/scan-attendance" />}>
+            <ScanLine className="size-4" />
+            Scan QR to check in
+          </Button>
+        }
+      />
 
-      {error && <div className="alert alert-error">{error}</div>}
-      {actionMsg.text && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionMsg.text}
-        </div>
-      )}
+      {error && <InlineAlert type="error">{error}</InlineAlert>}
+      {actionMsg.text && <InlineAlert type={actionMsg.type}>{actionMsg.text}</InlineAlert>}
 
       {registrations.length === 0 ? (
-        <div className="card p-10 text-center">
-          <p className="text-stone-500 mb-4">You haven&apos;t joined any events yet.</p>
-          <Link to="/dashboard" className="btn-primary inline-block">
-            Browse events
-          </Link>
-        </div>
+        <Card className="p-10 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">You haven&apos;t joined any events yet.</p>
+          <Button nativeButton={false} render={<Link to="/dashboard" />}>Browse events</Button>
+        </Card>
       ) : (
         <>
           {upcoming.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-800">Upcoming ({upcoming.length})</h2>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-base font-semibold text-foreground">Upcoming ({upcoming.length})</h2>
               <div className="grid gap-4">
-                {upcoming.map((r) => (
-                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                {upcoming.map((r, i) => (
+                  <Card
+                    key={r.id}
+                    className="hover-lift animate-fade-up flex flex-col gap-4 p-5 hover:shadow-soft-lg md:flex-row md:items-center md:justify-between"
+                    style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
+                  >
                     <div>
-                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
-                      <p className="text-sm text-brand-700">{r.club_name}</p>
-                      <p className="text-sm text-stone-500 mt-1">
+                      <h3 className="font-semibold text-foreground">{r.event_title}</h3>
+                      <p className="text-sm text-primary">{r.club_name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {formatDateTime(r.event_date)} · {r.venue || "Venue TBA"}
                       </p>
+                      {(r.attendance_qr_active || r.qr_payload) ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <StatusBadge tone="success">{r.attendance_qr_active ? "QR active" : "QR ready"}</StatusBadge>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setQrEvent({ id: r.event, title: r.event_title })}
+                          >
+                            View QR
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="flex gap-2">
-                      <Link to="/scan-attendance" className="btn-secondary">
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" nativeButton={false} render={<Link to="/scan-attendance" />}>
                         Check in
-                      </Link>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => handleUnregister(r.event)}
                         disabled={actionInProgress === r.event}
-                        className="btn-secondary text-red-700 hover:bg-red-50"
+                        className="text-destructive hover:text-destructive"
                       >
-                        {actionInProgress === r.event ? "..." : "Unregister"}
-                      </button>
+                        {actionInProgress === r.event ? "Processing..." : "Unregister"}
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             </section>
           )}
 
           {completed.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold text-stone-800">Past events ({completed.length})</h2>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-base font-semibold text-foreground">Past events ({completed.length})</h2>
               <div className="grid gap-4">
-                {completed.map((r) => (
-                  <div key={r.id} className="card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                {completed.map((r, i) => (
+                  <Card
+                    key={r.id}
+                    className="hover-lift animate-fade-up flex flex-col gap-4 p-5 hover:shadow-soft-lg md:flex-row md:items-center md:justify-between"
+                    style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
+                  >
                     <div>
-                      <h3 className="font-semibold text-stone-800">{r.event_title}</h3>
-                      <p className="text-sm text-brand-700">{r.club_name}</p>
-                      <p className="text-sm text-stone-500 mt-1">
+                      <h3 className="font-semibold text-foreground">{r.event_title}</h3>
+                      <p className="text-sm text-primary">{r.club_name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {formatDateTime(r.event_date)} · {r.venue || "—"}
                       </p>
                       <div className="mt-2">{attendanceBadge(r.attendance_status)}</div>
                     </div>
-                    {r.attendance_status === "Present" && (
-                      <button
+                    {r.event_status === "Completed" && (
+                      <Button
                         type="button"
                         onClick={() => handleDownloadCertificate(r)}
                         disabled={downloadingId === r.event}
-                        className="btn-accent"
                       >
                         {downloadingId === r.event ? "Preparing..." : "Download certificate"}
-                      </button>
+                      </Button>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             </section>
           )}
         </>
+      )}
+
+      {qrEvent && (
+        <EventQRModal event={qrEvent} onClose={() => setQrEvent(null)} onAfterClose={() => setQrEvent(null)} />
       )}
     </div>
   );

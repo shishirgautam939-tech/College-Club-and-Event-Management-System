@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Loader2, PencilLine } from "lucide-react";
 import { getAllUsers, updateUser, getDepartments } from "../../api/users";
+import PageHeader from "@/components/PageHeader";
+import InlineAlert from "@/components/InlineAlert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BRANCHES = [
   { value: "BCT", label: "BCT - Computer" },
@@ -61,12 +76,11 @@ const EditUser = () => {
   }, [id]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
+
+  const setField = (name, value) => setFormData({ ...formData, [name]: value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,166 +128,160 @@ const EditUser = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex min-h-[50vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        <span>Loading user…</span>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Edit User</h2>
+    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+      <PageHeader
+        eyebrow={<><PencilLine className="size-3.5" /> Editing account</>}
+        title="Edit user"
+        subtitle="Update account details and access."
+      />
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded border border-red-200 text-sm">
-          {error}
-        </div>
-      )}
+      <Card className="p-6">
+        {error && <InlineAlert type="error" className="mb-4">{error}</InlineAlert>}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
-          <select
-            name="user_type"
-            value={formData.user_type}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="Student">Student</option>
-            <option value="Faculty">Faculty</option>
-            <option value="Staff">Staff</option>
-            <option value="Admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Branch dropdown for Students */}
-        {formData.user_type === "Student" && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-            <select
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">Select Branch</option>
-              {BRANCHES.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user_type">User type</Label>
+            <Select value={formData.user_type} onValueChange={(value) => setField("user_type", value)}>
+              <SelectTrigger id="user_type" className="h-10 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Student">Student</SelectItem>
+                <SelectItem value="Faculty">Faculty</SelectItem>
+                <SelectItem value="Staff">Staff</SelectItem>
+                <SelectItem value="Admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
 
-        {/* Department dropdown for Faculty */}
-        {formData.user_type === "Faculty" && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <select
-              name="department"
-              value={formData.department}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.department_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+          {/* Branch dropdown for Students */}
+          {formData.user_type === "Student" && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="branch">Branch</Label>
+              <Select value={formData.branch} onValueChange={(value) => setField("branch", value)}>
+                <SelectTrigger id="branch" className="h-10 w-full">
+                  <SelectValue placeholder="Select branch">
+                    {() => BRANCHES.find((b) => b.value === formData.branch)?.label ?? "Select branch"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANCHES.map((b) => (
+                    <SelectItem key={b.value} value={b.value}>
+                      {b.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-          <input
-            type="text"
-            name="full_name"
-            value={formData.full_name}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
+          {/* Department dropdown for Faculty */}
+          {formData.user_type === "Faculty" && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="department">Department</Label>
+              <Select value={String(formData.department)} onValueChange={(value) => setField("department", value)}>
+                <SelectTrigger id="department" className="h-10 w-full">
+                  <SelectValue placeholder="Select department">
+                    {() => departments.find((d) => String(d.id) === String(formData.department))?.department_name ?? "Select department"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>
+                      {dept.department_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            New Password{" "}
-            <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-
-        {formData.user_type === "Student" && (
-          <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-            <label className="block text-sm font-medium text-blue-800 mb-1">Roll Number</label>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="full_name">Full name</Label>
+            <Input
+              id="full_name"
               type="text"
-              name="roll_number"
-              value={formData.roll_number}
+              name="full_name"
+              value={formData.full_name}
               onChange={handleChange}
-              placeholder="Format: NCE123ABC456"
-              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+              autoComplete="name"
+              className="h-10"
             />
-            <p className="mt-1 text-xs text-blue-600">
-              Must be in format: NCE + 3 digits + 3 letters + 3 digits
-            </p>
           </div>
-        )}
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="is_active"
-            checked={formData.is_active}
-            onChange={handleChange}
-            id="is_active"
-            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-          />
-          <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              autoComplete="email"
+              className="h-10"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="password">
+              New password <span className="font-normal text-muted-foreground">(leave blank to keep current)</span>
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              autoComplete="new-password"
+              className="h-10"
+            />
+          </div>
+
+          {formData.user_type === "Student" && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="roll_number">Roll number</Label>
+              <Input
+                id="roll_number"
+                type="text"
+                name="roll_number"
+                value={formData.roll_number}
+                onChange={handleChange}
+                placeholder="Format: NCE123ABC456"
+                className="h-10"
+              />
+              <p className="text-xs text-muted-foreground">Must be in format: NCE + 3 digits + 3 letters + 3 digits</p>
+            </div>
+          )}
+
+          <label htmlFor="is_active" className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Checkbox
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setField("is_active", checked === true)}
+            />
             Active
           </label>
-        </div>
 
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 };

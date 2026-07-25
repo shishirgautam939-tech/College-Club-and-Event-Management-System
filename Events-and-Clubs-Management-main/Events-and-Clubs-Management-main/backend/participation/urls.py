@@ -13,6 +13,7 @@ from .views import (
     EventCertificatesView,
     DownloadCertificateView,
     DownloadMyEventCertificateView,
+    DownloadCertificateByCodeView,
 )
 
 app_name = 'participation'
@@ -38,4 +39,5 @@ urlpatterns = [
     path('events/<int:event_id>/certificates/', EventCertificatesView.as_view(), name='event_certificates'),
     path('events/<int:event_id>/certificate/download/', DownloadMyEventCertificateView.as_view(), name='download_my_event_certificate'),
     path('certificates/<int:certificate_id>/download/', DownloadCertificateView.as_view(), name='download_certificate'),
+    path('certificates/download/<uuid:certificate_code>/', DownloadCertificateByCodeView.as_view(), name='download_certificate_by_code'),
 ]

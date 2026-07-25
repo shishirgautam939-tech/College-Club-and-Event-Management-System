@@ -1,255 +1,251 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
+/* ==========================================================================
+   Evento — Design System
+   Built on shadcn/ui (Base UI + Tailwind v4). The Evento green/cream brand
+   is expressed through the shadcn semantic tokens below (--primary,
+   --sidebar, etc.) rather than bespoke component classes.
+   ========================================================================== */
+
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-brand-50: #f3f7f4;
-  --color-brand-100: #e3ece5;
-  --color-brand-700: #2f5233;
-  --color-brand-800: #243f27;
-  --color-brand-900: #1a2f1d;
-  --color-accent-500: #c4785a;
-  --color-accent-600: #a86145;
-  --color-cream-50: #fdfbf7;
-  --color-cream-100: #f7f2ea;
-  --color-cream-200: #efe7db;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
+/* ── Reset & root tokens ────────────────────────────────────────────────── */
+:root {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  /* Soft, layered elevation ramp — used across cards, popovers and the FAB.
+     Diffuse multi-shadow stacks read far more premium than a single drop. */
+  --shadow-soft: 0 1px 2px rgba(28, 25, 23, 0.04), 0 4px 12px -2px rgba(28, 25, 23, 0.06), 0 12px 28px -10px rgba(28, 25, 23, 0.09);
+  --shadow-soft-lg: 0 2px 4px rgba(28, 25, 23, 0.04), 0 10px 28px -6px rgba(28, 25, 23, 0.10), 0 28px 56px -16px rgba(28, 25, 23, 0.16);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* shadcn semantic tokens, mapped onto the Evento green/cream brand */
+  --background: #fbfaf8;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #146356;
+  --primary-foreground: #fbfaf8;
+  --secondary: #f3f7f4;
+  --secondary-foreground: #1f4a3d;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --accent: #eef1ee;
+  --accent-foreground: #1f4a3d;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #ffffff;
+  --border: #e7e5e4;
+  --input: #e0dedb;
+  --ring: #2f9c82;
+  --chart-1: #2f9c82;
+  --chart-2: #c4785a;
+  --chart-3: #8b5cf6;
+  --chart-4: #0ea5e9;
+  --chart-5: #f2b545;
+  --radius: 0.75rem;
+  --sidebar: #12262b;
+  --sidebar-foreground: rgba(255, 255, 255, 0.85);
+  --sidebar-primary: #146356;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(224, 178, 76, 0.16);
+  --sidebar-accent-foreground: #f2cf7e;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #2f9c82;
+}
+
+/* Map the semantic tokens above into Tailwind's theme namespace. Without
+   this block Tailwind never generates the semantic utilities (bg-primary,
+   text-muted-foreground, bg-sidebar, …) — components silently lose their
+   colors. shadcn's own tailwind.css only ships keyframes/variants, so the
+   mapping must live here. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-heading: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body {
   font-family: var(--font-sans);
-  background: var(--color-cream-50);
-  color: #44403c;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.005em;
 }
 
-.page-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* Ambient, corner-anchored colour wash — a soft cream → green → lavender →
+   terracotta bloom that gives every screen depth without hurting text
+   contrast. Kept low-opacity and fixed so it reads as premium, not loud. */
+body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(20, 99, 86, 0.06), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(242, 181, 69, 0.07), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 100% 100%, rgba(139, 92, 246, 0.06), transparent 62%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, rgba(196, 120, 90, 0.05), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
-.page-title {
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: #292524;
-  letter-spacing: -0.025em;
+* { box-sizing: border-box; }
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 22%, transparent);
+  color: var(--primary);
 }
 
-.page-subtitle {
-  color: #78716c;
-  margin-top: 0.25rem;
-  max-width: 42rem;
+/* Slim, unobtrusive scrollbars for a native-app feel */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 15%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--foreground) 26%, transparent);
+  background-clip: padding-box;
 }
 
-.card,
-.event-card {
-  background: white;
-  border-radius: 1rem;
-  border: 1px solid rgb(231 229 228 / 0.8);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+/* ==========================================================================
+   Premium UI helpers — reusable, framework-agnostic classes layered on top
+   of the shadcn primitives. Kept as plain classes so Tailwind utilities on
+   the same element still win when a component needs to override them.
+   ========================================================================== */
+
+/* Diffuse elevation */
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-soft-lg { box-shadow: var(--shadow-soft-lg); }
+.shadow-glow-primary {
+  box-shadow: 0 10px 30px -8px color-mix(in oklch, var(--primary) 45%, transparent);
 }
 
-.event-card {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  transition: box-shadow 0.2s ease;
+/* Glassmorphism surfaces */
+.glass {
+  background: color-mix(in oklch, var(--card) 68%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.glass-dark {
+  background: color-mix(in oklch, var(--sidebar) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.event-card:hover {
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+/* Interactive lift — pair with a shadow utility for the classic hover pop */
+.hover-lift {
+  transition: transform 0.28s var(--ease-out-soft), box-shadow 0.28s var(--ease-out-soft);
+}
+.hover-lift:hover { transform: translateY(-3px); }
+
+/* Entrance animations for card grids and page sections */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.55s var(--ease-out-soft) both; }
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
+
+@keyframes fab-pulse {
+  0% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent); }
+  70% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 14px transparent; }
+  100% { box-shadow: 0 12px 30px -8px color-mix(in oklch, var(--primary) 55%, transparent), 0 0 0 0 transparent; }
 }
 
-.btn-primary {
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.75rem;
-  background: var(--color-brand-700);
-  color: white;
-  transition: background 0.2s ease;
+/* Respect reduced-motion preferences everywhere */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-fade-up,
+  .animate-float-slow,
+  .hover-lift { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================================
+   QR scanner override — make the html5-qrcode library feel native
+   ========================================================================== */
+#qr-reader {
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+#qr-reader__dashboard_section_csr button,
+#qr-reader__dashboard_section_csr span { font-family: inherit !important; }
+
+#qr-reader__scan_region { background: var(--foreground) !important; }
+#qr-reader__scan_region video { border-radius: 0.85rem; }
+#qr-reader__scan_region img { border-radius: 0.85rem; }
+
+#qr-reader__dashboard_section_csr { padding: 0.75rem 0.5rem 0 !important; }
+#qr-reader__dashboard_section_csr button {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border: none !important;
+  border-radius: 0.55rem !important;
+  padding: 0.5rem 0.85rem !important;
+  font-weight: 600 !important;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
+#qr-reader__dashboard_section_csr button:hover { opacity: 0.9; }
 
-.btn-primary:hover {
-  background: var(--color-brand-800);
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.75rem;
-  background: var(--color-cream-100);
-  color: var(--color-brand-800);
-  transition: background 0.2s ease;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background: var(--color-cream-200);
-}
-
-.btn-accent {
-  padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.75rem;
-  background: var(--color-accent-500);
-  color: white;
-  transition: background 0.2s ease;
-  cursor: pointer;
-}
-
-.btn-accent:hover {
-  background: var(--color-accent-600);
-}
-
-.input-field {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  border: 1px solid #e7e5e4;
-  border-radius: 0.75rem;
-  background: white;
-  color: #292524;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--color-brand-700);
-  box-shadow: 0 0 0 3px var(--color-brand-100);
-}
-
-.alert {
-  padding: 0.75rem;
-  border-radius: 0.75rem;
-  font-size: 0.875rem;
-}
-
-.alert-success {
-  background: var(--color-brand-50);
-  color: var(--color-brand-800);
-  border: 1px solid var(--color-brand-100);
-}
-
-.alert-error {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-.tab-btn,
-.tab-btn-active {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.tab-btn {
-  color: #57534e;
-}
-
-.tab-btn:hover {
-  background: var(--color-cream-100);
-}
-
-.tab-btn-active {
-  background: var(--color-brand-700);
-  color: white;
-}
-
-.chip {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.chip-success {
-  background: var(--color-brand-50);
-  color: var(--color-brand-800);
-}
-
-.chip-success:hover {
-  background: var(--color-brand-100);
-}
-
-.chip-muted {
-  background: #f5f5f4;
-  color: #57534e;
-}
-
-.chip-muted:hover {
-  background: #e7e5e4;
-}
-
-.data-table {
-  min-width: 100%;
-  font-size: 0.875rem;
-}
-
-.data-table thead tr {
-  border-bottom: 1px solid #f5f5f4;
-  text-align: left;
-  color: #78716c;
-}
-
-.data-table th,
-.data-table td {
-  padding: 0.75rem 1.5rem;
-}
-
-.data-table tbody tr {
-  border-bottom: 1px solid #fafaf9;
-}
-
-.data-table tbody tr:hover {
-  background: var(--color-cream-50);
-}
-
-.row-present {
-  background: rgb(243 247 244 / 0.4);
-}
-
-.nav-link {
-  color: #57534e;
-  transition: color 0.2s ease;
-}
-
-.nav-link:hover {
-  color: var(--color-brand-800);
-}
-
-.badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.badge-success {
-  background: var(--color-brand-50);
-  color: var(--color-brand-800);
-}
-
-.badge-muted {
-  background: #f5f5f4;
-  color: #57534e;
-}
-
-@media (min-width: 768px) {
-  .page-title {
-    font-size: 1.875rem;
-  }
-}
-
-.no-underline {
-  text-decoration: none;
-}
+#qr-reader__header_message,
+#qr-reader__status_span { color: var(--muted-foreground) !important; font-size: 0.8rem !important; }

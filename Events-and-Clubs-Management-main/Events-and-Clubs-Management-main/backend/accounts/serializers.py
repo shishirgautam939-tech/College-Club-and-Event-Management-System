@@ -1,8 +1,54 @@
+
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
 
 import re
+
+# A stricter email regex. The local part is 1-64 chars from the
+# standard set. The domain is a sequence of dot-separated labels
+# (1-63 chars each) and ends in `.com` or `.edu`. The TLD is
+# anchored separately so it cannot be greedily absorbed into the
+# previous label.
+EMAIL_DOMAIN_PATTERN = re.compile(
+    r'^[A-Za-z0-9._%+\-]{1,64}@'
+    r'(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+'
+    r'(?:com|edu)$'
+)
+
+# Reject common typos by requiring realistic second-level lengths.
+# - .com providers like gmail.com need at least 5 chars before ".com"
+#   so typos like gmai.com do not pass.
+# - .edu school domains can be shorter, so nce.edu still works.
+MIN_SECOND_LEVEL_DOMAIN_LENGTHS = {
+    'com': 5,
+    'edu': 3,
+}
+
+
+def validate_email_domain(value):
+    email = (value or '').strip()
+    if not EMAIL_DOMAIN_PATTERN.match(email):
+        raise serializers.ValidationError(
+            'Enter a valid email address ending with .com or .edu (e.g. name@gmail.com or name@nce.edu).'
+        )
+    # Pull out the second-level domain (the label right before the
+    # TLD) and require it to be long enough for that TLD.
+    try:
+        domain_part = email.rsplit('@', 1)[1]
+        second_level, tld = domain_part.rsplit('.', 1)
+        second_level = second_level.split('.')[-1]
+    except (IndexError, ValueError):
+        raise serializers.ValidationError('Enter a valid email address.')
+    min_length = MIN_SECOND_LEVEL_DOMAIN_LENGTHS.get(tld.lower())
+    if min_length and len(second_level) < min_length:
+        raise serializers.ValidationError(
+            'That email domain looks incomplete. Use a full provider '
+            'name like gmail.com, outlook.com, or your college\'s .edu address.'
+        )
+    return email
+
 
 class UserSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(
@@ -15,6 +61,9 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+    def validate_email(self, value):
+        return validate_email_domain(value)
 
     def validate(self, data):
         user_type = data.get('user_type')
@@ -56,6 +105,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'password': {'write_only': True, 'required': False},
         }
 
+    def validate_email(self, value):
+        return validate_email_domain(value)
+
     def validate(self, data):
         user_type = data.get('user_type', self.instance.user_type if self.instance else None)
         roll_number = data.get('roll_number', self.instance.roll_number if self.instance else None)
@@ -92,14 +144,23 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        # Allow login with email, roll_number, or full_name
-        identifier = attrs.get('email', '')
-        if identifier and '@' not in identifier:
-            # Not an email — try roll_number first, then full_name
-            user = (
-                User.objects.filter(roll_number__iexact=identifier).first()
-                or User.objects.filter(full_name__iexact=identifier).first()
-            )
+        # Allow login with email, roll_number, or full_name.
+        # Match every identifier case-insensitively and substitute the
+        # user's canonical stored email before authenticating. This is
+        # what makes mobile logins reliable: phone keyboards capitalize
+        # the first letter (e.g. "Name@gmail.com"), and the default JWT
+        # auth backend matches email case-sensitively, so without this
+        # the same credentials that work on desktop fail on mobile.
+        identifier = (attrs.get('email') or '').strip()
+        if identifier:
+            if '@' in identifier:
+                user = User.objects.filter(email__iexact=identifier).first()
+            else:
+                # Not an email — try roll_number first, then full_name
+                user = (
+                    User.objects.filter(roll_number__iexact=identifier).first()
+                    or User.objects.filter(full_name__iexact=identifier).first()
+                )
             if user:
                 attrs['email'] = user.email
 
